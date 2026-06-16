@@ -22,6 +22,26 @@ export default function HomeClient({ initialMembers, user }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [addModal, setAddModal] = useState<{ open: false } | { open: true; mode: AddMode }>({ open: false });
   const [editMember, setEditMember] = useState<Member | null>(null);
+  const [userModal, setUserModal] = useState(false);
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
+  const [userError, setUserError] = useState("");
+  const [userLoading, setUserLoading] = useState(false);
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setUserError("");
+    setUserLoading(true);
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userForm),
+    });
+    const data = await res.json();
+    setUserLoading(false);
+    if (!res.ok) { setUserError(data.error); return; }
+    setUserModal(false);
+    setUserForm({ name: "", email: "", password: "" });
+  }
 
   async function refreshMembers() {
     const res = await fetch("/api/members", { cache: "no-store" });
@@ -67,12 +87,18 @@ export default function HomeClient({ initialMembers, user }: Props) {
             }}>
               + Үндэс нэмэх
             </button>
+            <button onClick={() => setUserModal(true)} style={{
+              fontSize: 12, background: "#7c3aed", color: "#fff",
+              border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+            }}>
+              + Хэрэглэгч
+            </button>
             <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
               {members.length} гишүүн &nbsp;·&nbsp; {user.name}
             </span>
             <button onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST" });
-              window.location.reload();
+              window.location.href = "/";
             }} style={{
               fontSize: 12, background: "#f1f5f9", color: "#475569",
               border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
@@ -160,6 +186,47 @@ export default function HomeClient({ initialMembers, user }: Props) {
           onClose={() => setEditMember(null)}
           onSaved={refreshMembers}
         />
+      )}
+
+      {userModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+        }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 320 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Шинэ хэрэглэгч үүсгэх</h2>
+            {userError && (
+              <div style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 6, marginBottom: 12 }}>
+                {userError}
+              </div>
+            )}
+            <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input required placeholder="Нэр" value={userForm.name}
+                onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }} />
+              <input required type="email" placeholder="Email" value={userForm.email}
+                onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }} />
+              <input required type="password" placeholder="Нууц үг" value={userForm.password}
+                onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button type="submit" disabled={userLoading} style={{
+                  flex: 1, background: "#7c3aed", color: "#fff", border: "none",
+                  borderRadius: 6, padding: "8px", fontSize: 13, cursor: "pointer",
+                }}>
+                  {userLoading ? "Үүсгэж байна..." : "Үүсгэх"}
+                </button>
+                <button type="button" onClick={() => { setUserModal(false); setUserError(""); }} style={{
+                  flex: 1, background: "#f1f5f9", color: "#475569", border: "none",
+                  borderRadius: 6, padding: "8px", fontSize: 13, cursor: "pointer",
+                }}>
+                  Болих
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
