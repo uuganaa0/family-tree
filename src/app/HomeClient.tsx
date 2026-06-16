@@ -132,26 +132,19 @@ export default function HomeClient({ initialMembers, user }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "6px 16px", background: "#fff",
-        borderBottom: "1px solid #e2e8f0", flexShrink: 0,
-      }}>
-        <span style={{ fontWeight: 700, fontSize: 16, color: "#1e293b" }}>🌳 Ургийн Мод</span>
+      <div className="ft-bar">
+        <span className="ft-brand">
+          <span className="ft-brand-mark">🌳</span>
+          Ургийн Мод
+        </span>
         {user ? (
           <>
             {user.role === "admin" && (
               <>
-                <button onClick={handleAddRoot} style={{
-                  fontSize: 12, background: "#16a34a", color: "#fff",
-                  border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                }}>
+                <button onClick={handleAddRoot} className="ft-btn ft-btn--primary">
                   + Үндэс нэмэх
                 </button>
-                <button onClick={() => setUserModal(true)} style={{
-                  fontSize: 12, background: "#7c3aed", color: "#fff",
-                  border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                }}>
+                <button onClick={() => setUserModal(true)} className="ft-btn ft-btn--accent">
                   + Хэрэглэгч
                 </button>
               </>
@@ -161,19 +154,20 @@ export default function HomeClient({ initialMembers, user }: Props) {
             <div ref={searchRef} style={{ position: "relative" }}>
               <input
                 type="text"
-                placeholder="Хайх..."
+                className="ft-input"
+                placeholder="🔍  Хайх..."
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                 onFocus={() => setSearchOpen(true)}
-                style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", width: 140, outline: "none" }}
+                style={{ width: 168 }}
               />
               {searchOpen && searchResults.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", minWidth: 180, marginTop: 2 }}>
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 300, background: "#fff", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow-md)", minWidth: 200, overflow: "hidden", animation: "ft-pop-in 0.12s ease" }}>
                   {searchResults.map(m => (
                     <div key={m.id}
                       onMouseDown={() => { setFocusId(m.id); setSelectedMember(m); setSearchQuery(""); setSearchOpen(false); setTimeout(() => setFocusId(null), 1000); }}
-                      style={{ padding: "8px 12px", fontSize: 13, cursor: "pointer", borderBottom: "1px solid #f1f5f9" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                      style={{ padding: "9px 13px", fontSize: 13, cursor: "pointer" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f4f7fb")}
                       onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
                       {m.name}
                     </div>
@@ -183,34 +177,30 @@ export default function HomeClient({ initialMembers, user }: Props) {
             </div>
 
             {user.role === "admin" && (
-              <button onClick={() => setAdminPanel(true)} style={{ fontSize: 12, background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+              <button onClick={() => setAdminPanel(true)} className="ft-btn ft-btn--ghost">
                 ⚙ Admin
               </button>
             )}
 
-            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
-              {members.length} гишүүн &nbsp;·&nbsp; {user.name}
+            <span style={{ fontSize: 12.5, color: "var(--muted)", marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ background: "#f1f5f9", color: "var(--ink-soft)", padding: "3px 9px", borderRadius: 999, fontWeight: 600 }}>{members.length} гишүүн</span>
+              <span style={{ fontWeight: 600, color: "var(--ink-soft)" }}>{user.name}</span>
             </span>
             <button onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST" });
               window.location.href = "/";
-            }} style={{
-              fontSize: 12, background: "#f1f5f9", color: "#475569",
-              border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-            }}>
+            }} className="ft-btn ft-btn--ghost">
               Гарах
             </button>
           </>
         ) : (
           <>
-            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
-              {members.length} гишүүн &nbsp;·&nbsp; scroll=zoom · drag=хөдөлгөх
+            <span style={{ fontSize: 12.5, color: "var(--muted)", marginLeft: "auto" }}>
+              <span style={{ background: "#f1f5f9", color: "var(--ink-soft)", padding: "3px 9px", borderRadius: 999, fontWeight: 600 }}>{members.length} гишүүн</span>
+              <span style={{ margin: "0 10px" }}>scroll=zoom · drag=хөдөлгөх</span>
             </span>
-            <a href="/login" style={{ fontSize: 12, color: "#2563eb" }}>Нэвтрэх</a>
-            <a href="/register" style={{
-              fontSize: 12, background: "#2563eb", color: "#fff",
-              borderRadius: 6, padding: "4px 10px", textDecoration: "none",
-            }}>Бүртгүүлэх</a>
+            <a href="/login" className="ft-link">Нэвтрэх</a>
+            <a href="/register" className="ft-btn ft-btn--primary" style={{ textDecoration: "none" }}>Бүртгүүлэх</a>
           </>
         )}
       </div>
@@ -218,9 +208,9 @@ export default function HomeClient({ initialMembers, user }: Props) {
       {/* Legend */}
       {user?.role === "admin" && (
         <div style={{
-          display: "flex", gap: 16, padding: "4px 16px",
-          background: "#f8fafc", borderBottom: "1px solid #e2e8f0",
-          fontSize: 11, color: "#64748b", flexShrink: 0,
+          display: "flex", gap: 18, padding: "6px 18px",
+          background: "rgba(244,247,251,0.7)", borderBottom: "1px solid var(--line)",
+          fontSize: 11.5, color: "var(--ink-soft)", flexShrink: 0,
         }}>
           <span><span style={{ color: "#22c55e", fontWeight: 700 }}>+</span> Хүүхэд</span>
           <span><span style={{ color: "#ec4899" }}>❤</span> Эхнэр/Нөхөр</span>
@@ -380,24 +370,29 @@ function GuestLanding() {
     }}>
       {/* Left brand panel */}
       <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
+        flex: 1, position: "relative", overflow: "hidden",
+        display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", padding: "40px 32px",
-        background: "linear-gradient(160deg, #1e3a5f 0%, #0f766e 100%)",
+        background: "linear-gradient(155deg, #0f3d3a 0%, #134e4a 45%, #0f766e 100%)",
         color: "#fff",
       }}>
-        <div style={{ fontSize: 80, marginBottom: 20 }}>🌳</div>
-        <div style={{ fontSize: 30, fontWeight: 800, marginBottom: 14, textAlign: "center" }}>Ургийн Мод</div>
-        <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", textAlign: "center", maxWidth: 280, lineHeight: 1.7 }}>
+        {/* decorative glow */}
+        <div style={{ position: "absolute", top: "-15%", left: "-10%", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,184,166,0.35), transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: "-20%", right: "-10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.18), transparent 70%)", pointerEvents: "none" }} />
+
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 96, height: 96, borderRadius: 28, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", fontSize: 52, marginBottom: 22, boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>🌳</div>
+        <div style={{ position: "relative", fontSize: 32, fontWeight: 800, marginBottom: 12, textAlign: "center", letterSpacing: "-0.02em" }}>Ургийн Мод</div>
+        <div style={{ position: "relative", fontSize: 15, color: "rgba(255,255,255,0.72)", textAlign: "center", maxWidth: 290, lineHeight: 1.7 }}>
           Гэр бүлийн түүхийг хадгалж, үеийн үед дамжуулж ирэх платформ
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 40, width: "100%", maxWidth: 260 }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10, marginTop: 38, width: "100%", maxWidth: 280 }}>
           {[
             { icon: "🔗", text: "Үеийн холбоос харуулах" },
             { icon: "🔍", text: "Хурдан хайлт" },
             { icon: "📥", text: "PNG татаж авах" },
           ].map(f => (
-            <div key={f.icon} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
-              <span style={{ fontSize: 20 }}>{f.icon}</span>
+            <div key={f.icon} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 14, color: "rgba(255,255,255,0.92)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "11px 15px" }}>
+              <span style={{ fontSize: 18 }}>{f.icon}</span>
               {f.text}
             </div>
           ))}
@@ -410,8 +405,12 @@ function GuestLanding() {
         padding: "40px 32px",
       }}>
         <div style={{ width: "100%", maxWidth: 380 }}>
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em" }}>Тавтай морил</div>
+            <div style={{ fontSize: 14, color: "var(--muted)", marginTop: 4 }}>Үргэлжлүүлэхийн тулд нэвтэрнэ үү</div>
+          </div>
           {/* Tab switcher */}
-          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 4, marginBottom: 28 }}>
+          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 4, marginBottom: 24 }}>
             {(["login", "register"] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setError(""); }} style={{
                 flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer",
@@ -440,7 +439,7 @@ function GuestLanding() {
                   type="text" required value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="Батбаяр" style={inputStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                  onFocus={e => e.currentTarget.style.borderColor = "#0f766e"}
                   onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
                 />
               </div>
@@ -451,7 +450,7 @@ function GuestLanding() {
                 type="email" required value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 placeholder="example@mail.com" style={inputStyle}
-                onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                onFocus={e => e.currentTarget.style.borderColor = "#0f766e"}
                 onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
               />
             </div>
@@ -462,7 +461,7 @@ function GuestLanding() {
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 placeholder={tab === "register" ? "6+ тэмдэгт" : "••••••••"} style={inputStyle}
-                onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                onFocus={e => e.currentTarget.style.borderColor = "#0f766e"}
                 onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
               />
             </div>
@@ -470,7 +469,7 @@ function GuestLanding() {
               type="submit" disabled={loading}
               style={{
                 width: "100%", padding: "13px", borderRadius: 10, border: "none",
-                background: loading ? "#93c5fd" : "#2563eb",
+                background: loading ? "#5eead4" : "#0f766e",
                 color: "#fff", fontSize: 15, fontWeight: 700,
                 cursor: loading ? "not-allowed" : "pointer", marginTop: 4,
               }}

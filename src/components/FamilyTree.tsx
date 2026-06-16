@@ -118,8 +118,8 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     const H = svgRef.current.clientHeight || 600;
 
     const defs = svg.append("defs");
-    const f = defs.append("filter").attr("id", "sh");
-    f.append("feDropShadow").attr("dx", 0).attr("dy", 2).attr("stdDeviation", 3).attr("flood-opacity", 0.1);
+    const f = defs.append("filter").attr("id", "sh").attr("x", "-30%").attr("y", "-30%").attr("width", "160%").attr("height", "160%");
+    f.append("feDropShadow").attr("dx", 0).attr("dy", 4).attr("stdDeviation", 5).attr("flood-color", "#1e293b").attr("flood-opacity", 0.12);
 
     const g = svg.append("g");
 
@@ -212,8 +212,9 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .join("path")
       .attr("class", "link")
       .attr("fill", "none")
-      .attr("stroke", "#cbd5e1")
+      .attr("stroke", "#b8c5d6")
       .attr("stroke-width", 2)
+      .attr("stroke-linecap", "round")
       .attr("d", (d) => linkD(d.sid, d.tid));
 
     // ── Node groups ──
@@ -228,15 +229,26 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     // ── Draw primary card ──
     node.append("rect")
+      .attr("class", "ft-card")
       .attr("x", -NW / 2).attr("y", -NH / 2)
-      .attr("width", NW).attr("height", NH).attr("rx", 10)
+      .attr("width", NW).attr("height", NH).attr("rx", 13)
       .attr("fill", (d) => cardFill(d.data.gender, !!d.data.deathYear))
       .attr("stroke", (d) => cardStroke(d.data.gender, !!d.data.deathYear))
-      .attr("stroke-width", 2).attr("filter", "url(#sh)");
+      .attr("stroke-width", 1.5).attr("filter", "url(#sh)");
 
-    // Хүйсний тэмдэг
-    node.append("text").attr("x", -NW / 2 + 8).attr("y", -NH / 2 + 14).attr("font-size", "11px")
-      .text((d) => d.data.gender === "female" ? "♀" : d.data.gender === "male" ? "♂" : "");
+    // Хүйсний тэмдэг — өнгөт chip
+    const genderChip = (sel: d3.Selection<SVGGElement, d3.HierarchyPointNode<TreeNode>, SVGGElement, unknown>, gOf: (d: TreeNode) => string | null | undefined, deadOf: (d: TreeNode) => boolean) => {
+      const chip = sel.filter((d) => !!gOf(d.data)).append("g")
+        .attr("transform", `translate(${-NW / 2 + 15},${-NH / 2 + 15})`)
+        .attr("pointer-events", "none");
+      chip.append("circle").attr("r", 8)
+        .attr("fill", (d) => deadOf(d.data) ? "#cbd5e1" : (gOf(d.data) === "female" ? "#fbcfe8" : "#bfdbfe"));
+      chip.append("text").attr("text-anchor", "middle").attr("dy", "0.34em")
+        .attr("font-size", "10px").attr("font-weight", "700")
+        .attr("fill", (d) => deadOf(d.data) ? "#64748b" : (gOf(d.data) === "female" ? "#be185d" : "#1d4ed8"))
+        .text((d) => gOf(d.data) === "female" ? "♀" : "♂");
+    };
+    genderChip(node, (d) => d.gender, (d) => !!d.deathYear);
 
     // Deceased cross mark for primary
     node.filter(d => !!d.data.deathYear).append("text")
@@ -288,8 +300,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .attr("stroke", (d) => { const sp = memberMap.current.get(d.data.spouseId!); return cardStroke(sp?.gender, !!sp?.deathYear); })
       .attr("stroke-width", 2).attr("filter", "url(#sh)");
 
-    sg.append("text").attr("x", -NW / 2 + 8).attr("y", -NH / 2 + 14).attr("font-size", "11px")
-      .text((d) => { const gn = memberMap.current.get(d.data.spouseId!)?.gender; return gn === "female" ? "♀" : gn === "male" ? "♂" : ""; });
+    genderChip(sg, (d) => memberMap.current.get(d.spouseId!)?.gender, (d) => !!memberMap.current.get(d.spouseId!)?.deathYear);
 
     // Deceased cross for spouse
     sg.filter(d => !!memberMap.current.get(d.data.spouseId!)?.deathYear).append("text")
@@ -454,7 +465,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       canvas.height = svg.clientHeight * 2;
       const ctx = canvas.getContext("2d")!;
       ctx.scale(2, 2);
-      ctx.fillStyle = "#f0f9ff";
+      ctx.fillStyle = "#f6f9fd";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
@@ -468,12 +479,17 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <svg ref={svgRef} style={{ display: "block", width: "100%", height: "100%", background: "linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%)" }} />
-      <button onClick={handleExport} title="PNG татах" style={{
-        position: "absolute", bottom: 16, right: 16,
-        background: "rgba(255,255,255,0.95)", border: "1px solid #e2e8f0",
-        borderRadius: 8, padding: "7px 14px", cursor: "pointer",
-        fontSize: 12, color: "#475569", boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+      <svg ref={svgRef} style={{
+        display: "block", width: "100%", height: "100%",
+        background:
+          "radial-gradient(circle at center, #d4ddea 1.1px, transparent 1.1px) 0 0 / 24px 24px," +
+          "linear-gradient(160deg, #f6f9fd 0%, #eef3f9 100%)",
+      }} />
+      <button onClick={handleExport} title="PNG татах" className="ft-btn" style={{
+        position: "absolute", bottom: 18, right: 18,
+        background: "rgba(255,255,255,0.92)", border: "1px solid var(--line)",
+        backdropFilter: "blur(6px)", color: "var(--ink-soft)",
+        boxShadow: "var(--shadow-md)",
       }}>📥 PNG татах</button>
     </div>
   );

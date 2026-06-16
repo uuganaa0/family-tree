@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+:root {
+  /* Brand */
+  --brand: #0f766e;
+  --brand-dark: #134e4a;
+  --brand-light: #14b8a6;
+
+  /* Neutrals */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --muted: #94a3b8;
+  --line: #e7ecf2;
+  --surface: #ffffff;
+  --canvas: #f4f7fb;
+
+  /* Accents */
+  --male: #2563eb;
+  --female: #db2777;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.16);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -9,4 +35,137 @@ body,
 #__next {
   height: 100%;
   margin: 0;
+}
+
+body {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Smooth focus rings for inputs/buttons */
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent);
+  outline-offset: 1px;
+}
+
+/* ── Toolbar ── */
+.ft-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.ft-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.ft-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 16px;
+  background: linear-gradient(150deg, var(--brand-light), var(--brand-dark));
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Buttons ── */
+.ft-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  white-space: nowrap;
+}
+.ft-btn:active { transform: translateY(1px); }
+.ft-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ft-btn--primary { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.ft-btn--primary:hover { background: var(--brand-dark); }
+
+.ft-btn--accent { background: #f5f3ff; color: #6d28d9; border-color: #e9e2ff; }
+.ft-btn--accent:hover { background: #ede9fe; }
+
+.ft-btn--ghost { background: #f1f5f9; color: var(--ink-soft); }
+.ft-btn--ghost:hover { background: #e2e8f0; }
+
+.ft-btn--danger { background: var(--danger); color: #fff; }
+.ft-btn--danger:hover { background: #dc2626; }
+
+.ft-btn--warn { background: var(--warn); color: #fff; }
+.ft-btn--warn:hover { background: #d97706; }
+
+/* ── Inputs ── */
+.ft-input {
+  font-size: 13px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ft-input:focus {
+  border-color: var(--brand-light);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-light) 18%, transparent);
+}
+
+.ft-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+}
+.ft-link:hover { text-decoration: underline; }
+
+/* ── Tree nodes ── */
+.ft-card { transition: stroke-width 0.12s ease; }
+.node:hover .ft-card { stroke-width: 2.5px; }
+.node .link { transition: stroke 0.15s ease; }
+
+/* Subtle entrance for panels/modals */
+@keyframes ft-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ft-slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes ft-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
