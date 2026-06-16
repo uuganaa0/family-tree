@@ -7,3 +7,4 @@ prisma/dev.db-journal
 prisma/prisma/
 *.db
 *.db-journal
+.vercel

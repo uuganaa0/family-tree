@@ -7,7 +7,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Нэвтэрнэ үү" }, { status: 401 });
+  if (!session || session.role !== "admin") return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
 
   const { id } = await params;
   const { name, birthYear, deathYear, gender, note } = await req.json();
@@ -33,8 +33,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "Нэвтэрнэ үү" }, { status: 401 });
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
   const { id } = await params;

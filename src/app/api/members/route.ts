@@ -11,8 +11,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "Нэвтэрнэ үү" }, { status: 401 });
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
   const { name, birthYear, deathYear, gender, note, parentId, spouseForId } = await req.json();

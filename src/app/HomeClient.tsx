@@ -15,7 +15,7 @@ type AddMode =
 
 interface Props {
   initialMembers: Member[];
-  user: { name: string; email: string } | null;
+  user: { name: string; email: string; role: string } | null;
 }
 
 export default function HomeClient({ initialMembers, user }: Props) {
@@ -23,7 +23,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
   const [addModal, setAddModal] = useState<{ open: false } | { open: true; mode: AddMode }>({ open: false });
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [userModal, setUserModal] = useState(false);
-  const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "viewer" });
   const [userError, setUserError] = useState("");
   const [userLoading, setUserLoading] = useState(false);
 
@@ -40,7 +40,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
     setUserLoading(false);
     if (!res.ok) { setUserError(data.error); return; }
     setUserModal(false);
-    setUserForm({ name: "", email: "", password: "" });
+    setUserForm({ name: "", email: "", password: "", role: "viewer" });
   }
 
   async function refreshMembers() {
@@ -81,18 +81,22 @@ export default function HomeClient({ initialMembers, user }: Props) {
         <span style={{ fontWeight: 700, fontSize: 16, color: "#1e293b" }}>🌳 Ургийн Мод</span>
         {user ? (
           <>
-            <button onClick={handleAddRoot} style={{
-              fontSize: 12, background: "#16a34a", color: "#fff",
-              border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-            }}>
-              + Үндэс нэмэх
-            </button>
-            <button onClick={() => setUserModal(true)} style={{
-              fontSize: 12, background: "#7c3aed", color: "#fff",
-              border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-            }}>
-              + Хэрэглэгч
-            </button>
+            {user.role === "admin" && (
+              <>
+                <button onClick={handleAddRoot} style={{
+                  fontSize: 12, background: "#16a34a", color: "#fff",
+                  border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                }}>
+                  + Үндэс нэмэх
+                </button>
+                <button onClick={() => setUserModal(true)} style={{
+                  fontSize: 12, background: "#7c3aed", color: "#fff",
+                  border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                }}>
+                  + Хэрэглэгч
+                </button>
+              </>
+            )}
             <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
               {members.length} гишүүн &nbsp;·&nbsp; {user.name}
             </span>
@@ -121,7 +125,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
       </div>
 
       {/* Legend */}
-      {user && (
+      {user?.role === "admin" && (
         <div style={{
           display: "flex", gap: 16, padding: "4px 16px",
           background: "#f8fafc", borderBottom: "1px solid #e2e8f0",
@@ -140,7 +144,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
         {user ? (
           <FamilyTree
             members={members}
-            isAuthenticated={true}
+            isAuthenticated={user?.role === "admin"}
             onAddChild={handleAddChild}
             onAddSpouse={handleAddSpouse}
             onEdit={handleEdit}
@@ -210,6 +214,11 @@ export default function HomeClient({ initialMembers, user }: Props) {
               <input required type="password" placeholder="Нууц үг" value={userForm.password}
                 onChange={e => setUserForm({ ...userForm, password: e.target.value })}
                 style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }} />
+              <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }}>
+                <option value="viewer">Viewer — зөвхөн харах</option>
+                <option value="admin">Admin — засах эрхтэй</option>
+              </select>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button type="submit" disabled={userLoading} style={{
                   flex: 1, background: "#7c3aed", color: "#fff", border: "none",

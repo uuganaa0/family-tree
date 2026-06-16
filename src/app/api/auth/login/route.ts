@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email эсвэл нууц үг буруу байна" }, { status: 401 });
   }
 
-  const token = await signToken({ userId: user.id, name: user.name, email: user.email });
+  const token = await signToken({ userId: user.id, name: user.name, email: user.email, role: user.role });
 
   const res = NextResponse.json({ ok: true, name: user.name });
   res.cookies.set("session", token, {

@@ -11,7 +11,7 @@ export default async function Home() {
   return (
     <HomeClient
       initialMembers={members}
-      user={session ? { name: session.name, email: session.email } : null}
+      user={session ? { name: session.name, email: session.email, role: session.role } : null}
     />
   );
 }

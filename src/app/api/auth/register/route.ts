@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     data: { name, email, password: hashed },
   });
 
-  const token = await signToken({ userId: user.id, name: user.name, email: user.email });
+  const token = await signToken({ userId: user.id, name: user.name, email: user.email, role: user.role });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set("session", token, {
