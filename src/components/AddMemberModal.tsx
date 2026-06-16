@@ -13,6 +13,8 @@ interface Props {
   onSaved: () => void;
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     name: "",
@@ -108,7 +110,7 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
                 className={inputCls}
                 placeholder="1980"
                 min="1800"
-                max="2025"
+                max={CURRENT_YEAR}
               />
             </div>
             <div>
@@ -120,7 +122,7 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
                 className={inputCls}
                 placeholder="2020"
                 min="1800"
-                max="2025"
+                max={CURRENT_YEAR}
               />
             </div>
           </div>

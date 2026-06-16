@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import AddMemberModal from "@/components/AddMemberModal";
 import EditMemberModal from "@/components/EditMemberModal";
 import MemberDetailPanel from "@/components/MemberDetailPanel";
 import AdminPanel from "@/components/AdminPanel";
 import type { Member } from "@/components/FamilyTree";
+import { getFatherName as getFatherNameUtil } from "@/lib/family";
 
 const FamilyTree = dynamic(() => import("@/components/FamilyTree"), { ssr: false });
 
@@ -32,24 +33,52 @@ export default function HomeClient({ initialMembers, user }: Props) {
   // New state
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [adminPanel, setAdminPanel] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const memberMap = new Map(members.map(m => [m.id, m]));
 
   function getFatherName(m: Member): string {
-    if (!m.parentId) return "";
-    const parent = members.find(x => x.id === m.parentId);
-    if (!parent) return "";
-    if (parent.gender === "male" || !parent.gender) return parent.name;
-    if (parent.spouseId) {
-      const sp = members.find(x => x.id === parent.spouseId);
-      if (sp && (sp.gender === "male" || !sp.gender)) return sp.name;
-    }
-    return parent.name;
+    return getFatherNameUtil(m, memberMap);
+  }
+
+  function getSpouseName(m: Member): string {
+    if (!m.spouseId) return "";
+    return memberMap.get(m.spouseId)?.name ?? "";
   }
 
   const searchResults = searchQuery.trim()
     ? members.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6)
     : [];
+
+  // Escape товч → бүх panel/modal хаах
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (selectedMember) { setSelectedMember(null); return; }
+      if (adminPanel) { setAdminPanel(false); return; }
+      if (addModal.open) { setAddModal({ open: false }); return; }
+      if (editMember) { setEditMember(null); return; }
+      if (userModal) { setUserModal(false); return; }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deleteConfirm, selectedMember, adminPanel, addModal, editMember, userModal]);
+
+  // Search dropdown-г гадна дарахад хаах
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -89,8 +118,14 @@ export default function HomeClient({ initialMembers, user }: Props) {
   }, []);
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`"${name}"-г устгах уу?`)) return;
-    await fetch(`/api/members/${id}`, { method: "DELETE" });
+    setDeleteConfirm({ id, name });
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm) return;
+    await fetch(`/api/members/${deleteConfirm.id}`, { method: "DELETE" });
+    setDeleteConfirm(null);
+    setSelectedMember(null);
     await refreshMembers();
   }
 
@@ -122,21 +157,21 @@ export default function HomeClient({ initialMembers, user }: Props) {
               </>
             )}
 
-            {/* Search - visible to all logged in users */}
-            <div style={{ position: "relative" }}>
+            {/* Search */}
+            <div ref={searchRef} style={{ position: "relative" }}>
               <input
                 type="text"
                 placeholder="Хайх..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onFocus={() => {}}
-                onBlur={() => setTimeout(() => setSearchQuery(""), 200)}
+                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                onFocus={() => setSearchOpen(true)}
                 style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", width: 140, outline: "none" }}
               />
-              {searchResults.length > 0 && (
+              {searchOpen && searchResults.length > 0 && (
                 <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", minWidth: 180, marginTop: 2 }}>
                   {searchResults.map(m => (
-                    <div key={m.id} onMouseDown={() => { setFocusId(m.id); setSelectedMember(m); setSearchQuery(""); setTimeout(() => setFocusId(null), 1000); }}
+                    <div key={m.id}
+                      onMouseDown={() => { setFocusId(m.id); setSelectedMember(m); setSearchQuery(""); setSearchOpen(false); setTimeout(() => setFocusId(null), 1000); }}
                       style={{ padding: "8px 12px", fontSize: 13, cursor: "pointer", borderBottom: "1px solid #f1f5f9" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
                       onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
@@ -210,27 +245,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
             focusId={focusId}
           />
         ) : (
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", height: "100%", gap: 16,
-            background: "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)",
-          }}>
-            <div style={{ fontSize: 64 }}>🌳</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}>
-              Гэр бүлийн ургийн мод
-            </div>
-            <div style={{ fontSize: 15, color: "#64748b", textAlign: "center", maxWidth: 320 }}>
-              Ургийн модыг харах болон засварлахын тулд нэвтэрнэ үү
-            </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-              <a href="/login" style={{
-                background: "#2563eb", color: "#fff", borderRadius: 8,
-                padding: "10px 28px", textDecoration: "none", fontWeight: 600, fontSize: 15,
-              }}>
-                Нэвтрэх
-              </a>
-            </div>
-          </div>
+          <GuestLanding />
         )}
       </div>
 
@@ -300,6 +315,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
         <MemberDetailPanel
           member={selectedMember}
           fatherName={getFatherName(selectedMember)}
+          spouseName={getSpouseName(selectedMember)}
           isAdmin={user?.role === "admin"}
           onEdit={() => { handleEdit(selectedMember); setSelectedMember(null); }}
           onDelete={() => { handleDelete(selectedMember.id, selectedMember.name); setSelectedMember(null); }}
@@ -307,6 +323,165 @@ export default function HomeClient({ initialMembers, user }: Props) {
         />
       )}
       {adminPanel && <AdminPanel onClose={() => setAdminPanel(false)} />}
+
+      {deleteConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#1e293b" }}>Устгах уу?</div>
+            <div style={{ fontSize: 14, color: "#64748b", marginBottom: 20 }}>
+              <b>&ldquo;{deleteConfirm.name}&rdquo;</b>-г устгасан үед хүүхдүүд нь эцэг эхгүй болно.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={confirmDelete} style={{ flex: 1, background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Устгах
+              </button>
+              <button onClick={() => setDeleteConfirm(null)} style={{ flex: 1, background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, cursor: "pointer" }}>
+                Болих
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuestLanding() {
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const url = tab === "login" ? "/api/auth/login" : "/api/auth/register";
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) { setError(data.error); return; }
+    window.location.reload();
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10,
+    padding: "11px 14px", fontSize: 14, outline: "none", boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{
+      display: "flex", height: "100%",
+      background: "linear-gradient(135deg, #f0f9ff 0%, #e8f5e9 100%)",
+    }}>
+      {/* Left brand panel */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", padding: "40px 32px",
+        background: "linear-gradient(160deg, #1e3a5f 0%, #0f766e 100%)",
+        color: "#fff",
+      }}>
+        <div style={{ fontSize: 80, marginBottom: 20 }}>🌳</div>
+        <div style={{ fontSize: 30, fontWeight: 800, marginBottom: 14, textAlign: "center" }}>Ургийн Мод</div>
+        <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", textAlign: "center", maxWidth: 280, lineHeight: 1.7 }}>
+          Гэр бүлийн түүхийг хадгалж, үеийн үед дамжуулж ирэх платформ
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 40, width: "100%", maxWidth: 260 }}>
+          {[
+            { icon: "🔗", text: "Үеийн холбоос харуулах" },
+            { icon: "🔍", text: "Хурдан хайлт" },
+            { icon: "📥", text: "PNG татаж авах" },
+          ].map(f => (
+            <div key={f.icon} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
+              <span style={{ fontSize: 20 }}>{f.icon}</span>
+              {f.text}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "40px 32px",
+      }}>
+        <div style={{ width: "100%", maxWidth: 380 }}>
+          {/* Tab switcher */}
+          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 4, marginBottom: 28 }}>
+            {(["login", "register"] as const).map(t => (
+              <button key={t} onClick={() => { setTab(t); setError(""); }} style={{
+                flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer",
+                fontSize: 14, fontWeight: 700,
+                background: tab === t ? "#fff" : "transparent",
+                color: tab === t ? "#1e293b" : "#94a3b8",
+                boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                transition: "all 0.15s",
+              }}>
+                {t === "login" ? "Нэвтрэх" : "Бүртгүүлэх"}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div style={{ marginBottom: 16, fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "10px 14px", borderRadius: 8, border: "1px solid #fecaca" }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {tab === "register" && (
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Нэр</label>
+                <input
+                  type="text" required value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder="Батбаяр" style={inputStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                  onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                />
+              </div>
+            )}
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Email</label>
+              <input
+                type="email" required value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="example@mail.com" style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Нууц үг</label>
+              <input
+                type="password" required minLength={tab === "register" ? 6 : undefined}
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                placeholder={tab === "register" ? "6+ тэмдэгт" : "••••••••"} style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = "#2563eb"}
+                onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+              />
+            </div>
+            <button
+              type="submit" disabled={loading}
+              style={{
+                width: "100%", padding: "13px", borderRadius: 10, border: "none",
+                background: loading ? "#93c5fd" : "#2563eb",
+                color: "#fff", fontSize: 15, fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer", marginTop: 4,
+              }}
+            >
+              {loading
+                ? (tab === "login" ? "Нэвтэрч байна..." : "Бүртгэж байна...")
+                : (tab === "login" ? "Нэвтрэх" : "Бүртгүүлэх")}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

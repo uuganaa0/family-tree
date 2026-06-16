@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import * as d3 from "d3";
+import { getFatherName } from "@/lib/family";
 
 export interface Member {
   id: string;
@@ -85,21 +86,6 @@ function cardStroke(g?: string | null, dead?: boolean) {
   return g === "female" ? "#f9a8d4" : "#93c5fd";
 }
 
-// Аавын нэрийг ол: parentId → parent нь эрэгтэй бол өөрөө, эмэгтэй бол spouse нь
-function getFatherName(m: Member, map: Map<string, Member>): string {
-  if (!m.parentId) return "";
-  const parent = map.get(m.parentId);
-  if (!parent) return "";
-  if (parent.gender === "male" || !parent.gender) {
-    return parent.name;
-  }
-  // Эхийг заасан бол → эцэг нь spouse (эрэгтэй)
-  if (parent.spouseId) {
-    const spouse = map.get(parent.spouseId);
-    if (spouse && (spouse.gender === "male" || !spouse.gender)) return spouse.name;
-  }
-  return parent.name;
-}
 
 const LS_KEY = "ft-positions";
 

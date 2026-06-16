@@ -4,13 +4,14 @@ import type { Member } from "./FamilyTree";
 interface Props {
   member: Member;
   fatherName: string;
+  spouseName?: string;
   isAdmin: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export default function MemberDetailPanel({ member, fatherName, isAdmin, onEdit, onDelete, onClose }: Props) {
+export default function MemberDetailPanel({ member, fatherName, spouseName, isAdmin, onEdit, onDelete, onClose }: Props) {
   const isDead = !!member.deathYear;
   const currentYear = new Date().getFullYear();
   const age = member.birthYear
@@ -39,6 +40,7 @@ export default function MemberDetailPanel({ member, fatherName, isAdmin, onEdit,
         {member.birthYear && <Row label="Төрсөн он" value={String(member.birthYear)} />}
         {member.deathYear && <Row label="Нас барсан он" value={String(member.deathYear)} />}
         {age !== null && <Row label={isDead ? "Насалсан" : "Нас"} value={`${age} нас`} />}
+        {spouseName && <Row label="Эхнэр / Нөхөр" value={spouseName} />}
         {member.note && <Row label="Тэмдэглэл" value={member.note} />}
       </div>
       {isAdmin && (

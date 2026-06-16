@@ -9,6 +9,8 @@ interface Props {
   onSaved: () => void;
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export default function EditMemberModal({ member, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     name: member.name,
@@ -64,7 +66,7 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн он</label>
               <input type="number" value={form.birthYear}
                 onChange={(e) => setForm({ ...form, birthYear: e.target.value })}
-                className={inputCls} placeholder="1980" min="1800" max="2025" />
+                className={inputCls} placeholder="1980" min="1800" max={CURRENT_YEAR} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Нас барсан он</label>
