@@ -15,10 +15,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
-  const { name, birthYear, deathYear, gender, note, parentId, spouseForId } = await req.json();
+  const { name, birthYear, deathYear, gender, note, parentId, spouseForId, childForId } = await req.json();
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
+  }
+
+  // Дээд тал руу аав/эж нэмэх үед — зорилтот хүн аль хэдийн эцэг эхтэй бол зөвшөөрөхгүй
+  if (childForId) {
+    const child = await prisma.familyMember.findUnique({ where: { id: childForId } });
+    if (!child) {
+      return NextResponse.json({ error: "Хүүхэд олдсонгүй" }, { status: 404 });
+    }
+    if (child.parentId) {
+      return NextResponse.json(
+        { error: "Энэ хүн аль хэдийн эцэг эхтэй байна" },
+        { status: 400 }
+      );
+    }
   }
 
   const member = await prisma.familyMember.create({
@@ -38,6 +52,14 @@ export async function POST(req: NextRequest) {
     await prisma.familyMember.update({
       where: { id: spouseForId },
       data: { spouseId: member.id },
+    });
+  }
+
+  // Хэрэв дээд тал руу аав/эж нэмсэн бол зорилтот хүнийг шинэ гишүүний хүүхэд болгоно
+  if (childForId) {
+    await prisma.familyMember.update({
+      where: { id: childForId },
+      data: { parentId: member.id },
     });
   }
 

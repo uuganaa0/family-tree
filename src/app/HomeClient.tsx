@@ -14,6 +14,7 @@ const FamilyTree = dynamic(() => import("@/components/FamilyTree"), { ssr: false
 type AddMode =
   | { type: "root" }
   | { type: "child"; parentId: string; parentName: string }
+  | { type: "parent"; childForId: string; childForName: string }
   | { type: "spouse"; spouseForId: string; spouseForName: string };
 
 interface Props {
@@ -107,6 +108,10 @@ export default function HomeClient({ initialMembers, user }: Props) {
 
   const handleAddSpouse = useCallback((spouseForId: string, spouseForName: string) => {
     setAddModal({ open: true, mode: { type: "spouse", spouseForId, spouseForName } });
+  }, []);
+
+  const handleAddParent = useCallback((childForId: string, childForName: string) => {
+    setAddModal({ open: true, mode: { type: "parent", childForId, childForName } });
   }, []);
 
   const handleAddRoot = useCallback(() => {
@@ -213,6 +218,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
           fontSize: 11.5, color: "var(--ink-soft)", flexShrink: 0,
         }}>
           <span><span style={{ color: "#22c55e", fontWeight: 700 }}>+</span> Хүүхэд</span>
+          <span><span style={{ color: "#6366f1", fontWeight: 700 }}>↑</span> Аав/Ээж</span>
           <span><span style={{ color: "#ec4899" }}>❤</span> Эхнэр/Нөхөр</span>
           <span><span style={{ color: "#f59e0b" }}>✏</span> Засах</span>
           <span><span style={{ color: "#ef4444", fontWeight: 700 }}>×</span> Устгах</span>
@@ -228,6 +234,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
             isAuthenticated={user?.role === "admin"}
             onAddChild={handleAddChild}
             onAddSpouse={handleAddSpouse}
+            onAddParent={handleAddParent}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddRoot={handleAddRoot}

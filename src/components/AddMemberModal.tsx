@@ -5,6 +5,7 @@ import { useState } from "react";
 type ModalMode =
   | { type: "root" }
   | { type: "child"; parentId: string; parentName: string }
+  | { type: "parent"; childForId: string; childForName: string }
   | { type: "spouse"; spouseForId: string; spouseForName: string };
 
 interface Props {
@@ -31,6 +32,8 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
       ? "Эхнэр / Нөхөр нэмэх"
       : mode.type === "child"
       ? "Хүүхэд нэмэх"
+      : mode.type === "parent"
+      ? "Аав / Ээж нэмэх"
       : "Үндэс гишүүн нэмэх";
 
   const subtitle =
@@ -38,6 +41,8 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
       ? `"${mode.spouseForName}"-н эхнэр/нөхөр`
       : mode.type === "child"
       ? `Эцэг/эх: ${mode.parentName}`
+      : mode.type === "parent"
+      ? `"${mode.childForName}"-н аав/ээж`
       : "Модны үндэс (эцэг эх байхгүй)";
 
   async function submit(e: React.FormEvent) {
@@ -50,6 +55,8 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
         ? { ...form, spouseForId: mode.spouseForId }
         : mode.type === "child"
         ? { ...form, parentId: mode.parentId }
+        : mode.type === "parent"
+        ? { ...form, childForId: mode.childForId }
         : { ...form };
 
     const res = await fetch("/api/members", {

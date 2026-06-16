@@ -24,6 +24,7 @@ interface Props {
   isAuthenticated: boolean;
   onAddChild: (parentId: string, parentName: string) => void;
   onAddSpouse: (spouseForId: string, spouseForName: string) => void;
+  onAddParent: (childForId: string, childForName: string) => void;
   onEdit: (member: Member) => void;
   onDelete: (id: string, name: string) => void;
   onAddRoot: () => void;
@@ -89,7 +90,7 @@ function cardStroke(g?: string | null, dead?: boolean) {
 
 const LS_KEY = "ft-positions";
 
-export default function FamilyTree({ members, isAuthenticated, onAddChild, onAddSpouse, onEdit, onDelete, onAddRoot, onNodeClick, focusId }: Props) {
+export default function FamilyTree({ members, isAuthenticated, onAddChild, onAddSpouse, onAddParent, onEdit, onDelete, onAddRoot, onNodeClick, focusId }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const memberMap = useRef(new Map<string, Member>());
   const posMap = useRef(new Map<string, { x: number; y: number }>());
@@ -338,6 +339,16 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
           s.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").attr("fill", "white").attr("font-size", "14px").attr("font-weight", "bold").text("+");
         });
 
+      // ↑ add parent (only for root nodes — those without a parent)
+      node.filter((d) => !d.data.parentId)
+        .append("g").attr("cursor", "pointer")
+        .attr("transform", `translate(0,${-NH / 2})`)
+        .on("click", (e, d) => { e.stopPropagation(); onAddParent(d.data.id, d.data.name); })
+        .call((s) => {
+          s.append("circle").attr("r", 10).attr("fill", "#6366f1");
+          s.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").attr("fill", "white").attr("font-size", "13px").attr("font-weight", "bold").text("↑");
+        });
+
       // ❤ add spouse (only if no spouse)
       node.filter((d) => !hasSpouseCard(d.data.id))
         .append("g").attr("cursor", "pointer")
@@ -431,7 +442,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       if (sp) onNodeClick?.(sp);
     });
 
-  }, [members, isAuthenticated, onAddChild, onAddSpouse, onDelete, onAddRoot, onEdit, onNodeClick]);
+  }, [members, isAuthenticated, onAddChild, onAddSpouse, onAddParent, onDelete, onAddRoot, onEdit, onNodeClick]);
 
   useEffect(() => {
     render();
