@@ -111,15 +111,39 @@ export default function HomeClient({ initialMembers, user }: Props) {
 
       {/* Canvas */}
       <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-        <FamilyTree
-          members={members}
-          isAuthenticated={!!user}
-          onAddChild={handleAddChild}
-          onAddSpouse={handleAddSpouse}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onAddRoot={handleAddRoot}
-        />
+        {user ? (
+          <FamilyTree
+            members={members}
+            isAuthenticated={true}
+            onAddChild={handleAddChild}
+            onAddSpouse={handleAddSpouse}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddRoot={handleAddRoot}
+          />
+        ) : (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", height: "100%", gap: 16,
+            background: "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)",
+          }}>
+            <div style={{ fontSize: 64 }}>🌳</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}>
+              Гэр бүлийн ургийн мод
+            </div>
+            <div style={{ fontSize: 15, color: "#64748b", textAlign: "center", maxWidth: 320 }}>
+              Ургийн модыг харах болон засварлахын тулд нэвтэрнэ үү
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+              <a href="/login" style={{
+                background: "#2563eb", color: "#fff", borderRadius: 8,
+                padding: "10px 28px", textDecoration: "none", fontWeight: 600, fontSize: 15,
+              }}>
+                Нэвтрэх
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       {addModal.open && (
