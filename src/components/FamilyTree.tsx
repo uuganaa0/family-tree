@@ -26,6 +26,8 @@ interface Props {
   onEdit: (member: Member) => void;
   onDelete: (id: string, name: string) => void;
   onAddRoot: () => void;
+  onNodeClick?: (member: Member) => void;
+  focusId?: string | null;
 }
 
 const NW = 155;
@@ -74,8 +76,14 @@ function yearText(m: Member) {
   if (m.birthYear) return `${m.birthYear} –`;
   return "";
 }
-function cardFill(g?: string | null) { return g === "female" ? "#fdf2f8" : "#eff6ff"; }
-function cardStroke(g?: string | null) { return g === "female" ? "#f9a8d4" : "#93c5fd"; }
+function cardFill(g?: string | null, dead?: boolean) {
+  if (dead) return "#f1f5f9";
+  return g === "female" ? "#fdf2f8" : "#eff6ff";
+}
+function cardStroke(g?: string | null, dead?: boolean) {
+  if (dead) return "#94a3b8";
+  return g === "female" ? "#f9a8d4" : "#93c5fd";
+}
 
 // Аавын нэрийг ол: parentId → parent нь эрэгтэй бол өөрөө, эмэгтэй бол spouse нь
 function getFatherName(m: Member, map: Map<string, Member>): string {
@@ -95,10 +103,11 @@ function getFatherName(m: Member, map: Map<string, Member>): string {
 
 const LS_KEY = "ft-positions";
 
-export default function FamilyTree({ members, isAuthenticated, onAddChild, onAddSpouse, onEdit, onDelete, onAddRoot }: Props) {
+export default function FamilyTree({ members, isAuthenticated, onAddChild, onAddSpouse, onEdit, onDelete, onAddRoot, onNodeClick, focusId }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const memberMap = useRef(new Map<string, Member>());
   const posMap = useRef(new Map<string, { x: number; y: number }>());
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   // Load saved positions once on mount
   useEffect(() => {
@@ -132,6 +141,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .scaleExtent([0.08, 3])
       .on("zoom", (e) => g.attr("transform", e.transform));
     svg.call(zoom);
+    zoomBehaviorRef.current = zoom;
 
     const { roots, secondaryIds } = buildTree(members);
 
@@ -234,13 +244,19 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     node.append("rect")
       .attr("x", -NW / 2).attr("y", -NH / 2)
       .attr("width", NW).attr("height", NH).attr("rx", 10)
-      .attr("fill", (d) => cardFill(d.data.gender))
-      .attr("stroke", (d) => cardStroke(d.data.gender))
+      .attr("fill", (d) => cardFill(d.data.gender, !!d.data.deathYear))
+      .attr("stroke", (d) => cardStroke(d.data.gender, !!d.data.deathYear))
       .attr("stroke-width", 2).attr("filter", "url(#sh)");
 
     // Хүйсний тэмдэг
     node.append("text").attr("x", -NW / 2 + 8).attr("y", -NH / 2 + 14).attr("font-size", "11px")
       .text((d) => d.data.gender === "female" ? "♀" : d.data.gender === "male" ? "♂" : "");
+
+    // Deceased cross mark for primary
+    node.filter(d => !!d.data.deathYear).append("text")
+      .attr("x", NW / 2 - 8).attr("y", -NH / 2 + 14)
+      .attr("font-size", "11px").attr("fill", "#94a3b8").attr("text-anchor", "middle")
+      .text("✝");
 
     // Аавын нэр (овог) — parentId байвал л харагдана
     node.append("text").attr("text-anchor", "middle").attr("y", -NH / 2 + 18)
@@ -253,7 +269,8 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     // Өөрийн нэр
     node.append("text").attr("text-anchor", "middle").attr("y", 2)
-      .attr("font-size", "13px").attr("font-weight", "700").attr("fill", "#1e293b")
+      .attr("font-size", "13px").attr("font-weight", "700")
+      .attr("fill", (d) => d.data.deathYear ? "#94a3b8" : "#1e293b")
       .text((d) => { const n = d.data.name; return n.length > 14 ? n.slice(0, 14) + "…" : n; });
 
     // Он
@@ -281,12 +298,18 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     sg.append("rect")
       .attr("x", -NW / 2).attr("y", -NH / 2).attr("width", NW).attr("height", NH).attr("rx", 10)
-      .attr("fill", (d) => cardFill(memberMap.current.get(d.data.spouseId!)?.gender))
-      .attr("stroke", (d) => cardStroke(memberMap.current.get(d.data.spouseId!)?.gender))
+      .attr("fill", (d) => { const sp = memberMap.current.get(d.data.spouseId!); return cardFill(sp?.gender, !!sp?.deathYear); })
+      .attr("stroke", (d) => { const sp = memberMap.current.get(d.data.spouseId!); return cardStroke(sp?.gender, !!sp?.deathYear); })
       .attr("stroke-width", 2).attr("filter", "url(#sh)");
 
     sg.append("text").attr("x", -NW / 2 + 8).attr("y", -NH / 2 + 14).attr("font-size", "11px")
       .text((d) => { const gn = memberMap.current.get(d.data.spouseId!)?.gender; return gn === "female" ? "♀" : gn === "male" ? "♂" : ""; });
+
+    // Deceased cross for spouse
+    sg.filter(d => !!memberMap.current.get(d.data.spouseId!)?.deathYear).append("text")
+      .attr("x", NW / 2 - 8).attr("y", -NH / 2 + 14)
+      .attr("font-size", "11px").attr("fill", "#94a3b8").attr("text-anchor", "middle")
+      .text("✝");
 
     // Spouse-н аавын нэр
     sg.append("text").attr("text-anchor", "middle").attr("y", -NH / 2 + 18)
@@ -299,7 +322,8 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       });
 
     sg.append("text").attr("text-anchor", "middle").attr("y", 2)
-      .attr("font-size", "13px").attr("font-weight", "700").attr("fill", "#1e293b")
+      .attr("font-size", "13px").attr("font-weight", "700")
+      .attr("fill", (d) => memberMap.current.get(d.data.spouseId!)?.deathYear ? "#94a3b8" : "#1e293b")
       .text((d) => { const n = memberMap.current.get(d.data.spouseId!)?.name ?? ""; return n.length > 14 ? n.slice(0, 14) + "…" : n; });
 
     sg.append("text").attr("text-anchor", "middle").attr("y", 17)
@@ -373,12 +397,16 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     }
 
     // ── Drag each node independently ──
+    let dragMoved = false;
+
     const drag = d3.drag<SVGGElement, d3.HierarchyPointNode<TreeNode>>()
       .on("start", function (event) {
+        dragMoved = false;
         event.sourceEvent.stopPropagation();
         d3.select(this).attr("cursor", "grabbing").raise();
       })
       .on("drag", function (event, d) {
+        dragMoved = true;
         const p = posMap.current.get(d.data.id);
         if (!p) return;
         p.x += event.dx;
@@ -393,7 +421,20 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     node.call(drag);
 
-  }, [members, isAuthenticated, onAddChild, onAddSpouse, onDelete, onAddRoot]);
+    node.on("click", (e, d) => {
+      if (dragMoved) return;
+      e.stopPropagation();
+      onNodeClick?.(d.data);
+    });
+
+    sg.on("click", (e, d) => {
+      e.stopPropagation();
+      if (dragMoved) return;
+      const sp = memberMap.current.get(d.data.spouseId!);
+      if (sp) onNodeClick?.(sp);
+    });
+
+  }, [members, isAuthenticated, onAddChild, onAddSpouse, onDelete, onAddRoot, onEdit, onNodeClick]);
 
   useEffect(() => {
     render();
@@ -402,13 +443,52 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     return () => obs.disconnect();
   }, [render]);
 
+  // Focus/zoom to a specific member
+  useEffect(() => {
+    if (!focusId || !svgRef.current || !zoomBehaviorRef.current) return;
+    const pos = posMap.current.get(focusId);
+    if (!pos) return;
+    const W = svgRef.current.clientWidth;
+    const H = svgRef.current.clientHeight;
+    d3.select(svgRef.current)
+      .transition().duration(700)
+      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(W / 2 - pos.x, H / 2 - pos.y).scale(1));
+  }, [focusId]);
+
+  const handleExport = useCallback(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const data = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = svg.clientWidth * 2;
+      canvas.height = svg.clientHeight * 2;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(2, 2);
+      ctx.fillStyle = "#f0f9ff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "urgiin-mod.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = url;
+  }, []);
+
   return (
-    <svg
-      ref={svgRef}
-      style={{
-        display: "block", width: "100%", height: "100%",
-        background: "linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%)",
-      }}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <svg ref={svgRef} style={{ display: "block", width: "100%", height: "100%", background: "linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%)" }} />
+      <button onClick={handleExport} title="PNG татах" style={{
+        position: "absolute", bottom: 16, right: 16,
+        background: "rgba(255,255,255,0.95)", border: "1px solid #e2e8f0",
+        borderRadius: 8, padding: "7px 14px", cursor: "pointer",
+        fontSize: 12, color: "#475569", boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+      }}>📥 PNG татах</button>
+    </div>
   );
 }

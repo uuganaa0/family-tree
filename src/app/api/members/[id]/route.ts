@@ -25,6 +25,10 @@ export async function PUT(
     },
   });
 
+  await prisma.activityLog.create({
+    data: { userId: session.userId, userName: session.name, action: "update", memberName: updated.name },
+  });
+
   return NextResponse.json(updated);
 }
 
@@ -61,6 +65,10 @@ export async function DELETE(
   });
 
   await prisma.familyMember.delete({ where: { id } });
+
+  await prisma.activityLog.create({
+    data: { userId: session.userId, userName: session.name, action: "delete", memberName: member?.name ?? id },
+  });
 
   return NextResponse.json({ ok: true });
 }

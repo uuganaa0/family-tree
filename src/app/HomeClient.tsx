@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import AddMemberModal from "@/components/AddMemberModal";
 import EditMemberModal from "@/components/EditMemberModal";
+import MemberDetailPanel from "@/components/MemberDetailPanel";
+import AdminPanel from "@/components/AdminPanel";
 import type { Member } from "@/components/FamilyTree";
 
 const FamilyTree = dynamic(() => import("@/components/FamilyTree"), { ssr: false });
@@ -26,6 +28,28 @@ export default function HomeClient({ initialMembers, user }: Props) {
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "viewer" });
   const [userError, setUserError] = useState("");
   const [userLoading, setUserLoading] = useState(false);
+
+  // New state
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [adminPanel, setAdminPanel] = useState(false);
+
+  function getFatherName(m: Member): string {
+    if (!m.parentId) return "";
+    const parent = members.find(x => x.id === m.parentId);
+    if (!parent) return "";
+    if (parent.gender === "male" || !parent.gender) return parent.name;
+    if (parent.spouseId) {
+      const sp = members.find(x => x.id === parent.spouseId);
+      if (sp && (sp.gender === "male" || !sp.gender)) return sp.name;
+    }
+    return parent.name;
+  }
+
+  const searchResults = searchQuery.trim()
+    ? members.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6)
+    : [];
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +121,38 @@ export default function HomeClient({ initialMembers, user }: Props) {
                 </button>
               </>
             )}
+
+            {/* Search - visible to all logged in users */}
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                placeholder="Хайх..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => {}}
+                onBlur={() => setTimeout(() => setSearchQuery(""), 200)}
+                style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", width: 140, outline: "none" }}
+              />
+              {searchResults.length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", minWidth: 180, marginTop: 2 }}>
+                  {searchResults.map(m => (
+                    <div key={m.id} onMouseDown={() => { setFocusId(m.id); setSelectedMember(m); setSearchQuery(""); setTimeout(() => setFocusId(null), 1000); }}
+                      style={{ padding: "8px 12px", fontSize: 13, cursor: "pointer", borderBottom: "1px solid #f1f5f9" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                      {m.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {user.role === "admin" && (
+              <button onClick={() => setAdminPanel(true)} style={{ fontSize: 12, background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+                ⚙ Admin
+              </button>
+            )}
+
             <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
               {members.length} гишүүн &nbsp;·&nbsp; {user.name}
             </span>
@@ -150,6 +206,8 @@ export default function HomeClient({ initialMembers, user }: Props) {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddRoot={handleAddRoot}
+            onNodeClick={(m) => setSelectedMember(m)}
+            focusId={focusId}
           />
         ) : (
           <div style={{
@@ -237,6 +295,18 @@ export default function HomeClient({ initialMembers, user }: Props) {
           </div>
         </div>
       )}
+
+      {selectedMember && (
+        <MemberDetailPanel
+          member={selectedMember}
+          fatherName={getFatherName(selectedMember)}
+          isAdmin={user?.role === "admin"}
+          onEdit={() => { handleEdit(selectedMember); setSelectedMember(null); }}
+          onDelete={() => { handleDelete(selectedMember.id, selectedMember.name); setSelectedMember(null); }}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
+      {adminPanel && <AdminPanel onClose={() => setAdminPanel(false)} />}
     </div>
   );
 }

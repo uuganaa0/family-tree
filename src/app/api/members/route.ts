@@ -41,5 +41,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  await prisma.activityLog.create({
+    data: { userId: session.userId, userName: session.name, action: "create", memberName: member.name },
+  });
+
   return NextResponse.json(member, { status: 201 });
 }
