@@ -151,8 +151,9 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     // ── Tree layout (initial positions only) ──
     const hierData: TreeNode = roots.length === 1 ? roots[0] : { id: "__root__", name: "", children: roots };
-    const root = d3.hierarchy<TreeNode>(hierData, (d) => d.children);
-    d3.tree<TreeNode>().nodeSize([NW + SP + NW + 40, NH + 60])(root);
+    const root = d3.tree<TreeNode>().nodeSize([NW + SP + NW + 40, NH + 60])(
+      d3.hierarchy<TreeNode>(hierData, (d) => d.children)
+    ) as d3.HierarchyPointNode<TreeNode>;
 
     // Set initial positions for NEW members; keep saved positions for existing ones
     const currentIds = new Set(members.map((m) => m.id));
@@ -161,7 +162,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     root.descendants().forEach((d) => {
       if (d.data.id === "__root__") return;
       if (!posMap.current.has(d.data.id)) {
-        posMap.current.set(d.data.id, { x: d.x, y: d.y });
+        posMap.current.set(d.data.id, { x: d.x ?? 0, y: d.y ?? 0 });
       }
     });
 
