@@ -181,6 +181,16 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     // ── Helpers ──
     function getPos(id: string) { return posMap.current.get(id) ?? { x: 0, y: 0 }; }
 
+    // Secondary эхнэр/нөхрийн бодит байрлал = primary хосынх нь байрлал + spouse offset
+    function getEffectivePos(id: string) {
+      const m = memberMap.current.get(id);
+      if (m?.spouseId && secondaryIds.has(id)) {
+        const p = getPos(m.spouseId);
+        return { x: p.x + (NW + SP), y: p.y };
+      }
+      return getPos(id);
+    }
+
     function savePositions() {
       const obj: Record<string, { x: number; y: number }> = {};
       posMap.current.forEach((p, id) => { obj[id] = p; });
@@ -194,8 +204,8 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     // ── Link path ──
     function linkD(sourceId: string, targetId: string) {
-      const s = getPos(sourceId);
-      const t = getPos(targetId);
+      const s = getEffectivePos(sourceId);
+      const t = getEffectivePos(targetId);
       const coupleOffsetX = hasSpouseCard(sourceId) ? NW / 2 + SP / 2 : 0;
       const sx = s.x + coupleOffsetX;
       const sy = s.y + NH / 2;
@@ -208,8 +218,19 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .filter((l) => l.source.data.id !== "__root__")
       .map((l) => ({ sid: l.source.data.id, tid: l.target.data.id }));
 
-    const linkPaths = g.selectAll<SVGPathElement, typeof linkData[0]>("path.link")
-      .data(linkData, (d) => d.sid + "→" + d.tid)
+    // Secondary эхнэр/нөхрийн аав/ээж рүү холбоосыг гараар нэмнэ
+    // (тэд хосдоо шингэдэг тул d3 hierarchy-д ороогүй)
+    const spouseParentLinks: { sid: string; tid: string }[] = [];
+    members.forEach((m) => {
+      if (!secondaryIds.has(m.id) || !m.parentId) return;
+      let pid = m.parentId;
+      if (secondaryIds.has(pid)) pid = memberMap.current.get(pid)?.spouseId ?? pid;
+      if (memberMap.current.has(pid)) spouseParentLinks.push({ sid: pid, tid: m.id });
+    });
+    const allLinks = [...linkData, ...spouseParentLinks];
+
+    const linkPaths = g.selectAll<SVGPathElement, typeof allLinks[0]>("path.link")
+      .data(allLinks, (d) => d.sid + "→" + d.tid)
       .join("path")
       .attr("class", "link")
       .attr("fill", "none")
@@ -375,6 +396,20 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
         .call((s) => {
           s.append("circle").attr("r", 10).attr("fill", "#ef4444");
           s.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").attr("fill", "white").attr("font-size", "14px").text("×");
+        });
+
+      // ↑ add parent for spouse (only if the spouse has no parent yet)
+      sg.filter((d) => !memberMap.current.get(d.data.spouseId!)?.parentId)
+        .append("g").attr("cursor", "pointer")
+        .attr("transform", `translate(0,${-NH / 2})`)
+        .on("click", (e, d) => {
+          e.stopPropagation();
+          const sp = memberMap.current.get(d.data.spouseId!);
+          if (sp) onAddParent(sp.id, sp.name);
+        })
+        .call((s) => {
+          s.append("circle").attr("r", 10).attr("fill", "#6366f1");
+          s.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").attr("fill", "white").attr("font-size", "13px").attr("font-weight", "bold").text("↑");
         });
 
       // ✏ edit spouse
