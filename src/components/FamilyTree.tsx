@@ -225,7 +225,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .data(visibleNodes, (d) => d.data.id)
       .join("g")
       .attr("class", "node")
-      .attr("cursor", "grab")
+      .attr("cursor", isAuthenticated ? "grab" : "pointer")
       .attr("transform", (d) => { const p = getPos(d.data.id); return `translate(${p.x},${p.y})`; });
 
     // ── Draw primary card ──
@@ -240,7 +240,7 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
     // Хүйсний тэмдэг — өнгөт chip
     const genderChip = (sel: d3.Selection<SVGGElement, d3.HierarchyPointNode<TreeNode>, SVGGElement, unknown>, gOf: (d: TreeNode) => string | null | undefined, deadOf: (d: TreeNode) => boolean) => {
       const chip = sel.filter((d) => !!gOf(d.data)).append("g")
-        .attr("transform", `translate(${-NW / 2 + 15},${-NH / 2 + 15})`)
+        .attr("transform", `translate(${-NW / 2 + 14},0)`)
         .attr("pointer-events", "none");
       chip.append("circle").attr("r", 8)
         .attr("fill", (d) => deadOf(d.data) ? "#cbd5e1" : (gOf(d.data) === "female" ? "#fbcfe8" : "#bfdbfe"));
@@ -427,7 +427,8 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
         savePositions();
       });
 
-    node.call(drag);
+    // Зөвхөн admin node чирч байршуулж болно
+    if (isAuthenticated) node.call(drag);
 
     node.on("click", (e, d) => {
       if (dragMoved) return;
