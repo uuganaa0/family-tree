@@ -10,6 +10,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Бүх талбарыг бөглөнө үү" }, { status: 400 });
   }
 
+  const userCount = await prisma.user.count();
+  if (userCount > 0) {
+    return NextResponse.json({ error: "Бүртгэл хаалттай байна" }, { status: 403 });
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json({ error: "Энэ email бүртгэлтэй байна" }, { status: 400 });
