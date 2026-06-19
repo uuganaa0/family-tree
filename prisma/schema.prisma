@@ -26,13 +26,25 @@ model FamilyMember {
   note      String?
   photo     String? // gishuunii zurag — base64 data URL (DB-d hadgalna)
   parentId  String?
-  spouseId  String?
+  parent2Id String? // нөгөө эцэг/эх (хосын нөгөө тал) — хүүхэд-эцэг холбоог зөв хадгална
+  spouseId  String? // DEPRECATED: Marriage хүснэгт рүү шилжсэн, зөвхөн migration-д ашиглана
   relation     String? // эцэг эхтэй холбоо: null=төрсөн, "adopted"=өргөмөл, "step"=дагавар
-  spouseStatus String? // гэр бүлийн байдал: null=гэрлэсэн, "divorced"=салсан
+  spouseStatus String? // DEPRECATED: Marriage.status руу шилжсэн
   parent    FamilyMember?  @relation("ParentChild", fields: [parentId], references: [id])
   children  FamilyMember[] @relation("ParentChild")
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+}
+
+model Marriage {
+  id         String   @id @default(cuid())
+  partner1Id String // layout-ийн "үндсэн" тал
+  partner2Id String // хосын нөгөө тал
+  status     String? // null=гэрлэсэн, "divorced"=салсан
+  createdAt  DateTime @default(now())
+
+  @@index([partner1Id])
+  @@index([partner2Id])
 }
 
 model ActivityLog {

@@ -5,14 +5,15 @@ import type { Member } from "./FamilyTree";
 interface Props {
   member: Member;
   fatherName: string;
-  spouseName?: string;
-  isAdmin: boolean;
+  spouses?: { name: string; status: string | null }[];
+  canEdit: boolean;
+  canDelete: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export default function MemberDetailPanel({ member, fatherName, spouseName, isAdmin, onEdit, onDelete, onClose }: Props) {
+export default function MemberDetailPanel({ member, fatherName, spouses = [], canEdit, canDelete, onEdit, onDelete, onClose }: Props) {
   const [zoom, setZoom] = useState(false);
   const isDead = !!member.deathYear;
   const currentYear = new Date().getFullYear();
@@ -28,14 +29,25 @@ export default function MemberDetailPanel({ member, fatherName, spouseName, isAd
 
   return (
     <>
-    <div style={{
-      position: "fixed", right: 0, top: 0, bottom: 0, width: 300,
-      background: "#fff", borderLeft: "1px solid var(--line)",
-      boxShadow: "var(--shadow-lg)",
-      display: "flex", flexDirection: "column", zIndex: 100,
-      animation: "ft-slide-in 0.18s ease",
-    }}>
-      <div style={{ padding: "20px 18px", background: headerBg, color: "#fff", position: "relative" }}>
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 400,
+        background: "rgba(15,23,42,0.5)", backdropFilter: "blur(3px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20, animation: "ft-fade-in 0.15s ease-out",
+      }}
+    >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 360, maxWidth: "100%", maxHeight: "88vh",
+        background: "#fff", borderRadius: 18, overflow: "hidden",
+        boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+        display: "flex", flexDirection: "column",
+        animation: "ft-pop-in 0.16s ease",
+      }}>
+      <div style={{ padding: "22px 20px", background: headerBg, color: "#fff", position: "relative" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, border: "none", background: "rgba(255,255,255,0.2)", borderRadius: 8, width: 28, height: 28, cursor: "pointer", fontSize: 18, lineHeight: 1, color: "#fff", flexShrink: 0 }}>×</button>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {member.photo ? (
@@ -67,16 +79,19 @@ export default function MemberDetailPanel({ member, fatherName, spouseName, isAd
         {age !== null && <Row label={isDead ? "Насалсан" : "Нас"} value={`${age} нас`} />}
         {member.relation === "adopted" && <Row label="Холбоос" value="Өргөмөл хүүхэд" />}
         {member.relation === "step" && <Row label="Холбоос" value="Дагавар хүүхэд" />}
-        {spouseName && <Row label="Эхнэр / Нөхөр" value={spouseName} />}
-        {spouseName && member.spouseStatus === "divorced" && <Row label="Гэр бүл" value="Салсан 💔" />}
+        {spouses.map((s, i) => (
+          <Row key={i} label={spouses.length > 1 ? `Хань ${i + 1}` : "Эхнэр / Нөхөр"}
+            value={s.status === "divorced" ? `${s.name} (салсан 💔)` : s.name} />
+        ))}
         {member.note && <Row label="Тэмдэглэл" value={member.note} />}
       </div>
-      {isAdmin && (
+      {(canEdit || canDelete) && (
         <div style={{ padding: "14px 18px", borderTop: "1px solid var(--line)", display: "flex", gap: 8 }}>
-          <button onClick={onEdit} className="ft-btn ft-btn--warn" style={{ flex: 1, justifyContent: "center", padding: "9px" }}>✏ Засах</button>
-          <button onClick={onDelete} className="ft-btn ft-btn--danger" style={{ flex: 1, justifyContent: "center", padding: "9px" }}>× Устгах</button>
+          {canEdit && <button onClick={onEdit} className="ft-btn ft-btn--warn" style={{ flex: 1, justifyContent: "center", padding: "9px" }}>✏ Засах</button>}
+          {canDelete && <button onClick={onDelete} className="ft-btn ft-btn--danger" style={{ flex: 1, justifyContent: "center", padding: "9px" }}>× Устгах</button>}
         </div>
       )}
+    </div>
     </div>
 
     {/* Зураг томруулж харах — admin болон viewer хоёуланд */}

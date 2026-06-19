@@ -173,6 +173,16 @@ button:focus-visible {
   from { opacity: 0; transform: scale(0.94) translateY(14px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+/* Хайсан node-ийг тодруулах pulse */
+@keyframes ft-focus-pulse {
+  0%   { opacity: 1; stroke-width: 3.5; }
+  50%  { opacity: 0.35; stroke-width: 6; }
+  100% { opacity: 1; stroke-width: 3.5; }
+}
+.ft-focus-ring {
+  animation: ft-focus-pulse 0.9s ease-in-out infinite;
+  pointer-events: none;
+}
 
 /* ── Modal ── */
 .ft-modal-overlay {

@@ -16,14 +16,26 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "admin") {
+  if (!session || !["admin", "sub-admin"].includes(session.role)) {
     return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
-  const { name, birthYear, deathYear, gender, note, photo, parentId, spouseForId, childForId, relation } = await req.json();
+  const { name, birthYear, deathYear, gender, note, photo, parentId, parent2Id, spouseForId, childForId, relation } = await req.json();
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
+  }
+
+  // Хүүхэд нэмэх үед нөгөө эцэг/эхийг тодорхойлох:
+  // тодорхой ирээгүй бол эцэг/эхийн цорын ганц (салаагүй) хосоос автоматаар авна.
+  let resolvedParent2: string | null = parent2Id || null;
+  if (parentId && !resolvedParent2) {
+    const marriages = await prisma.marriage.findMany({
+      where: { OR: [{ partner1Id: parentId }, { partner2Id: parentId }] },
+    });
+    const active = marriages.filter((m) => m.status !== "divorced");
+    const pick = active.length === 1 ? active[0] : marriages.length === 1 ? marriages[0] : null;
+    if (pick) resolvedParent2 = pick.partner1Id === parentId ? pick.partner2Id : pick.partner1Id;
   }
 
   // Дээд тал руу аав/эж нэмэх үед — зорилтот хүн аль хэдийн эцэг эхтэй бол зөвшөөрөхгүй
@@ -60,17 +72,16 @@ export async function POST(req: NextRequest) {
       note: note || null,
       photo: photoUrl,
       parentId: parentId || null,
-      spouseId: spouseForId || null,
+      parent2Id: parentId ? resolvedParent2 : null,
       // relation зөвхөн хүүхэд нэмэх үед (parentId байх) утгатай
       relation: parentId && (relation === "adopted" || relation === "step") ? relation : null,
     },
   });
 
-  // Хэрэв эхнэр/нөхрийн хувьд нэмсэн бол хоёр талд холбоно
+  // Хэрэв эхнэр/нөхрийн хувьд нэмсэн бол шинэ Marriage үүсгэнэ
   if (spouseForId) {
-    await prisma.familyMember.update({
-      where: { id: spouseForId },
-      data: { spouseId: member.id },
+    await prisma.marriage.create({
+      data: { partner1Id: spouseForId, partner2Id: member.id, status: null },
     });
   }
 

@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
   }
 
   const hashed = await bcrypt.hash(password, 12);
+  const validRole = ["admin", "sub-admin", "viewer"].includes(role) ? role : "viewer";
   await prisma.user.create({
-    data: { name, email, password: hashed, role: role === "admin" ? "admin" : "viewer" },
+    data: { name, email: email.trim().toLowerCase(), password: hashed, role: validRole },
   });
 
   return NextResponse.json({ ok: true });

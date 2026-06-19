@@ -6,7 +6,7 @@ import AddMemberModal from "@/components/AddMemberModal";
 import EditMemberModal from "@/components/EditMemberModal";
 import MemberDetailPanel from "@/components/MemberDetailPanel";
 import AdminPanel from "@/components/AdminPanel";
-import type { Member } from "@/components/FamilyTree";
+import type { Member, Marriage } from "@/components/FamilyTree";
 import { getFatherName as getFatherNameUtil } from "@/lib/family";
 
 const FamilyTree = dynamic(() => import("@/components/FamilyTree"), { ssr: false });
@@ -19,11 +19,13 @@ type AddMode =
 
 interface Props {
   initialMembers: Member[];
+  initialMarriages: Marriage[];
   user: { name: string; email: string; role: string } | null;
 }
 
-export default function HomeClient({ initialMembers, user }: Props) {
+export default function HomeClient({ initialMembers, initialMarriages, user }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [marriages, setMarriages] = useState<Marriage[]>(initialMarriages);
   const [addModal, setAddModal] = useState<{ open: false } | { open: true; mode: AddMode }>({ open: false });
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [userModal, setUserModal] = useState(false);
@@ -35,10 +37,18 @@ export default function HomeClient({ initialMembers, user }: Props) {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchIndex, setSearchIndex] = useState(0);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [adminPanel, setAdminPanel] = useState(false);
+  const [groupMove, setGroupMove] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Эрхийн түвшин: admin = бүх эрх, sub-admin = засна (устгахгүй), viewer = харах
+  const role = user?.role ?? "";
+  const canEdit = role === "admin" || role === "sub-admin";
+  const canDelete = role === "admin";
+  const isAdmin = role === "admin";
 
   const memberMap = new Map(members.map(m => [m.id, m]));
 
@@ -46,14 +56,62 @@ export default function HomeClient({ initialMembers, user }: Props) {
     return getFatherNameUtil(m, memberMap);
   }
 
-  function getSpouseName(m: Member): string {
-    if (!m.spouseId) return "";
-    return memberMap.get(m.spouseId)?.name ?? "";
+  // Гишүүний бүх хань (гэрлэсэн + салсан)
+  function getSpouses(m: Member): { name: string; status: string | null }[] {
+    return marriages
+      .filter(mar => mar.partner1Id === m.id || mar.partner2Id === m.id)
+      .map(mar => {
+        const otherId = mar.partner1Id === m.id ? mar.partner2Id : mar.partner1Id;
+        return { name: memberMap.get(otherId)?.name ?? "", status: mar.status ?? null };
+      })
+      .filter(s => s.name);
   }
 
   const searchResults = searchQuery.trim()
-    ? members.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6)
+    ? members.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 8)
     : [];
+
+  // Хайсан гишүүн рүү шилжиж очих + тодруулах
+  const jumpToMember = useCallback((m: Member) => {
+    setFocusId(m.id);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setSearchIndex(0);
+    setTimeout(() => setFocusId(null), 2200);
+  }, []);
+
+  // "Хайх" товч / Enter — идэвхтэй (эсвэл эхний) илэрц рүү шууд очно
+  function runSearch() {
+    const target = searchResults[searchIndex] ?? searchResults[0];
+    if (target) jumpToMember(target);
+  }
+
+  // Хүний дэд мэдээлэл (аав · төрсөн он)
+  function memberSubtitle(m: Member): string {
+    const parts: string[] = [];
+    const father = getFatherName(m);
+    if (father) parts.push(father);
+    const years = [m.birthYear, m.deathYear].some(Boolean)
+      ? `${m.birthYear ?? "?"}${m.deathYear ? `–${m.deathYear}` : ""}`
+      : "";
+    if (years) parts.push(years);
+    return parts.join(" · ");
+  }
+
+  // Хайлтын таарсан хэсгийг тодруулах
+  function highlightMatch(name: string): React.ReactNode {
+    const q = searchQuery.trim();
+    if (!q) return name;
+    const i = name.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return name;
+    return (
+      <>
+        {name.slice(0, i)}
+        <mark style={{ background: "#fde68a", color: "inherit", borderRadius: 3, padding: "0 1px" }}>{name.slice(i, i + q.length)}</mark>
+        {name.slice(i + q.length)}
+      </>
+    );
+  }
 
   // Escape товч → бүх panel/modal хаах
   useEffect(() => {
@@ -98,11 +156,28 @@ export default function HomeClient({ initialMembers, user }: Props) {
   }
 
   async function refreshMembers() {
-    const res = await fetch("/api/members", { cache: "no-store" });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (Array.isArray(data)) setMembers(data);
+    const [mRes, marRes] = await Promise.all([
+      fetch("/api/members", { cache: "no-store" }),
+      fetch("/api/marriages", { cache: "no-store" }),
+    ]);
+    if (mRes.ok) {
+      const data = await mRes.json();
+      if (Array.isArray(data)) setMembers(data);
+    }
+    if (marRes.ok) {
+      const data = await marRes.json();
+      if (Array.isArray(data)) setMarriages(data);
+    }
   }
+
+  const handleToggleMarriage = useCallback(async (marriageId: string, status: "divorced" | null) => {
+    await fetch(`/api/marriages/${marriageId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setMarriages(prev => prev.map(m => m.id === marriageId ? { ...m, status } : m));
+  }, []);
 
   const handleAddChild = useCallback((parentId: string, parentName: string) => {
     setAddModal({ open: true, mode: { type: "child", parentId, parentName } });
@@ -124,16 +199,30 @@ export default function HomeClient({ initialMembers, user }: Props) {
     setEditMember(member);
   }, []);
 
-  async function handleDelete(id: string, name: string) {
+  const handleDelete = useCallback((id: string, name: string) => {
     setDeleteConfirm({ id, name });
-  }
+  }, []);
+
+  const handleNodeClick = useCallback((m: Member) => {
+    setSelectedMember(m);
+  }, []);
 
   async function confirmDelete() {
     if (!deleteConfirm) return;
-    await fetch(`/api/members/${deleteConfirm.id}`, { method: "DELETE" });
+    const id = deleteConfirm.id;
     setDeleteConfirm(null);
     setSelectedMember(null);
-    await refreshMembers();
+
+    // Optimistic — локалд шууд устгаж, дэлгэцийг хүлээлгэхгүй
+    setMembers(prev => prev
+      .filter(m => m.id !== id)
+      .map(m => (m.parentId === id || m.parent2Id === id)
+        ? { ...m, parentId: m.parentId === id ? null : m.parentId, parent2Id: m.parent2Id === id ? null : m.parent2Id }
+        : m));
+    setMarriages(prev => prev.filter(mar => mar.partner1Id !== id && mar.partner2Id !== id));
+
+    const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
+    if (!res.ok) await refreshMembers(); // алдаа гарвал серверээс дахин ачаална
   }
 
   return (
@@ -146,44 +235,96 @@ export default function HomeClient({ initialMembers, user }: Props) {
         </span>
         {user ? (
           <>
-            {user.role === "admin" && (
-              <>
-                <button onClick={handleAddRoot} className="ft-btn ft-btn--primary">
-                  + Үндэс нэмэх
-                </button>
-                <button onClick={() => setUserModal(true)} className="ft-btn ft-btn--accent">
-                  + Хэрэглэгч
-                </button>
-              </>
+            {canEdit && (
+              <button onClick={handleAddRoot} className="ft-btn ft-btn--primary">
+                + Үндэс нэмэх
+              </button>
+            )}
+            {canEdit && (
+              <button
+                onClick={() => setGroupMove(v => !v)}
+                className="ft-btn ft-btn--ghost"
+                title="Бүлгээр зөөх: хүн чирэхэд түүний бүх удам хамт хөдөлнө"
+                style={groupMove ? { background: "#dcfce7", color: "#16a34a", borderColor: "#86efac" } : undefined}
+              >
+                🔗 Бүлгээр зөөх{groupMove ? " ✓" : ""}
+              </button>
+            )}
+            {isAdmin && (
+              <button onClick={() => setUserModal(true)} className="ft-btn ft-btn--accent">
+                + Хэрэглэгч
+              </button>
             )}
 
             {/* Search */}
-            <div ref={searchRef} style={{ position: "relative" }}>
+            <div ref={searchRef} style={{ position: "relative", display: "flex", gap: 6 }}>
               <input
                 type="text"
                 className="ft-input"
-                placeholder="🔍  Хайх..."
+                placeholder="🔍  Гишүүн хайх..."
                 value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); setSearchIndex(0); }}
                 onFocus={() => setSearchOpen(true)}
-                style={{ width: 168 }}
+                onKeyDown={e => {
+                  if (e.key === "Escape") { setSearchOpen(false); e.currentTarget.blur(); return; }
+                  if (e.key === "Enter") { e.preventDefault(); runSearch(); return; }
+                  if (!searchOpen || searchResults.length === 0) return;
+                  if (e.key === "ArrowDown") { e.preventDefault(); setSearchIndex(i => (i + 1) % searchResults.length); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setSearchIndex(i => (i - 1 + searchResults.length) % searchResults.length); }
+                }}
+                style={{ width: 190 }}
               />
-              {searchOpen && searchResults.length > 0 && (
-                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 300, background: "#fff", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow-md)", minWidth: 200, overflow: "hidden", animation: "ft-pop-in 0.12s ease" }}>
-                  {searchResults.map(m => (
-                    <div key={m.id}
-                      onMouseDown={() => { setFocusId(m.id); setSelectedMember(m); setSearchQuery(""); setSearchOpen(false); setTimeout(() => setFocusId(null), 1000); }}
-                      style={{ padding: "9px 13px", fontSize: 13, cursor: "pointer" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "#f4f7fb")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                      {m.name}
+              <button
+                onClick={runSearch}
+                disabled={!searchQuery.trim()}
+                className="ft-btn ft-btn--primary"
+                title="Хайсан гишүүн рүү очих"
+                style={{ flexShrink: 0, opacity: searchQuery.trim() ? 1 : 0.5 }}
+              >
+                Хайх
+              </button>
+              {searchOpen && searchQuery.trim() && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 300, background: "#fff", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow-md)", width: 260, maxHeight: 340, overflowY: "auto", animation: "ft-pop-in 0.12s ease" }}>
+                  {searchResults.length === 0 ? (
+                    <div style={{ padding: "14px 14px", fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+                      Илэрц олдсонгүй
                     </div>
-                  ))}
+                  ) : searchResults.map((m, idx) => {
+                    const active = idx === searchIndex;
+                    const subtitle = memberSubtitle(m);
+                    const isDead = !!m.deathYear;
+                    return (
+                      <div key={m.id}
+                        onMouseDown={() => jumpToMember(m)}
+                        onMouseEnter={() => setSearchIndex(idx)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "9px 12px", cursor: "pointer",
+                          background: active ? "#eef4ff" : "#fff",
+                          borderLeft: active ? "3px solid #3b82f6" : "3px solid transparent",
+                        }}>
+                        {m.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.photo} alt="" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                        ) : (
+                          <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 9, flexShrink: 0, fontSize: 15, background: isDead ? "#e2e8f0" : m.gender === "female" ? "#fce7f3" : "#dbeafe", color: isDead ? "#64748b" : m.gender === "female" ? "#be185d" : "#1d4ed8" }}>
+                            {m.gender === "female" ? "♀" : "♂"}
+                          </span>
+                        )}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {highlightMatch(m.name)}{isDead && <span style={{ marginLeft: 4, color: "#94a3b8" }}>✝</span>}
+                          </div>
+                          {subtitle && <div style={{ fontSize: 11.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {user.role === "admin" && (
+            {isAdmin && (
               <button onClick={() => setAdminPanel(true)} className="ft-btn ft-btn--ghost">
                 ⚙ Admin
               </button>
@@ -213,7 +354,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
       </div>
 
       {/* Legend */}
-      {user?.role === "admin" && (
+      {canEdit && (
         <div style={{
           display: "flex", gap: 18, padding: "6px 18px",
           background: "rgba(244,247,251,0.7)", borderBottom: "1px solid var(--line)",
@@ -223,7 +364,7 @@ export default function HomeClient({ initialMembers, user }: Props) {
           <span><span style={{ color: "#6366f1", fontWeight: 700 }}>↑</span> Аав/Ээж</span>
           <span><span style={{ color: "#ec4899" }}>❤</span> Эхнэр/Нөхөр</span>
           <span><span style={{ color: "#f59e0b" }}>✏</span> Засах</span>
-          <span><span style={{ color: "#ef4444", fontWeight: 700 }}>×</span> Устгах</span>
+          {canDelete && <span><span style={{ color: "#ef4444", fontWeight: 700 }}>×</span> Устгах</span>}
           <span style={{ color: "#7c3aed" }}>┄ Өргөмөл/Дагавар</span>
           <span>💔 Салсан</span>
           <span style={{ marginLeft: "auto" }}>Box-г чирж байршуулна</span>
@@ -235,14 +376,18 @@ export default function HomeClient({ initialMembers, user }: Props) {
         {user ? (
           <FamilyTree
             members={members}
-            isAuthenticated={user?.role === "admin"}
+            marriages={marriages}
+            isAuthenticated={canEdit}
+            canDelete={canDelete}
+            groupMove={groupMove}
+            onToggleMarriage={handleToggleMarriage}
             onAddChild={handleAddChild}
             onAddSpouse={handleAddSpouse}
             onAddParent={handleAddParent}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddRoot={handleAddRoot}
-            onNodeClick={(m) => setSelectedMember(m)}
+            onNodeClick={handleNodeClick}
             focusId={focusId}
           />
         ) : (
@@ -291,7 +436,8 @@ export default function HomeClient({ initialMembers, user }: Props) {
               <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}
                 style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 13 }}>
                 <option value="viewer">Viewer — зөвхөн харах</option>
-                <option value="admin">Admin — засах эрхтэй</option>
+                <option value="sub-admin">Sub-admin — засна (устгахгүй)</option>
+                <option value="admin">Admin — бүх эрх</option>
               </select>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button type="submit" disabled={userLoading} style={{
@@ -316,8 +462,9 @@ export default function HomeClient({ initialMembers, user }: Props) {
         <MemberDetailPanel
           member={selectedMember}
           fatherName={getFatherName(selectedMember)}
-          spouseName={getSpouseName(selectedMember)}
-          isAdmin={user?.role === "admin"}
+          spouses={getSpouses(selectedMember)}
+          canEdit={canEdit}
+          canDelete={canDelete}
           onEdit={() => { handleEdit(selectedMember); setSelectedMember(null); }}
           onDelete={() => { handleDelete(selectedMember.id, selectedMember.name); setSelectedMember(null); }}
           onClose={() => setSelectedMember(null)}

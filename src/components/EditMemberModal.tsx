@@ -267,31 +267,7 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
             </div>
           )}
 
-          {/* Гэр бүлийн байдал — зөвхөн хантай бол */}
-          {member.spouseId && (
-            <div style={{ marginBottom: 18 }}>
-              <label style={labelStyle}>Гэр бүл</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[
-                  { val: "", label: "Гэрлэсэн", icon: "❤" },
-                  { val: "divorced", label: "Салсан", icon: "💔" },
-                ].map((s) => {
-                  const active = form.spouseStatus === s.val;
-                  return (
-                    <button
-                      key={s.val || "married"}
-                      type="button"
-                      onClick={() => setForm({ ...form, spouseStatus: s.val })}
-                      style={chip(active)}
-                    >
-                      <span style={{ fontSize: 16, lineHeight: 1 }}>{s.icon}</span>
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Гэр бүлийн байдал (гэрлэсэн/салсан) нь модны ❤/💔 дээр дарж солигдоно */}
 
           {/* Төрсөн / Нас барсан он */}
           <div style={{ marginBottom: 18 }}>

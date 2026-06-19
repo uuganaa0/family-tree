@@ -8,10 +8,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.role !== "admin") return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
+  if (!session || !["admin", "sub-admin"].includes(session.role)) return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
 
   const { id } = await params;
-  const { name, birthYear, deathYear, gender, note, photo, relation, spouseStatus } = await req.json();
+  const { name, birthYear, deathYear, gender, note, photo, relation } = await req.json();
 
   if (!name?.trim()) return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
 
@@ -44,17 +44,8 @@ export async function PUT(
       photo: photoUrl,
       // relation зөвхөн эцэг эхтэй (parentId байх) бол утгатай
       relation: existing?.parentId && (relation === "adopted" || relation === "step") ? relation : null,
-      spouseStatus: existing?.spouseId && spouseStatus === "divorced" ? "divorced" : null,
     },
   });
-
-  // Гэр бүлийн байдлыг хосын нөгөө талд нь sync хийнэ
-  if (existing?.spouseId) {
-    await prisma.familyMember.update({
-      where: { id: existing.spouseId },
-      data: { spouseStatus: spouseStatus === "divorced" ? "divorced" : null },
-    });
-  }
 
   await prisma.activityLog.create({
     data: { userId: session.userId, userName: session.name, action: "update", memberName: updated.name },
@@ -76,33 +67,22 @@ export async function DELETE(
 
   const member = await prisma.familyMember.findUnique({ where: { id } });
 
-  // Эхнэр/нөхрийн холбоос цэвэрлэнэ
-  if (member?.spouseId) {
-    await prisma.familyMember.update({
-      where: { id: member.spouseId },
-      data: { spouseId: null },
-    });
-  }
-  // spouseId нь энэ хүнийг заасан бусад гишүүнийг цэвэрлэнэ
-  await prisma.familyMember.updateMany({
-    where: { spouseId: id },
-    data: { spouseId: null },
-  });
-
-  // Хүүхдүүдийг эцэг эхгүй болгоно
-  await prisma.familyMember.updateMany({
-    where: { parentId: id },
-    data: { parentId: null },
-  });
+  // Холбоо/лавлагаануудыг зэрэг цэвэрлэнэ (delete-ээс өмнө — parentId нь FK)
+  await Promise.all([
+    prisma.marriage.deleteMany({ where: { OR: [{ partner1Id: id }, { partner2Id: id }] } }),
+    prisma.familyMember.updateMany({ where: { parentId: id }, data: { parentId: null } }),
+    prisma.familyMember.updateMany({ where: { parent2Id: id }, data: { parent2Id: null } }),
+  ]);
 
   await prisma.familyMember.delete({ where: { id } });
 
-  // Гишүүний зургийг Blob store-оос цэвэрлэнэ
-  await deletePhoto(member?.photo);
-
-  await prisma.activityLog.create({
-    data: { userId: session.userId, userName: session.name, action: "delete", memberName: member?.name ?? id },
-  });
+  // Зураг устгах + лог зэрэг (хариу буцаахыг саатуулахгүй)
+  await Promise.all([
+    deletePhoto(member?.photo),
+    prisma.activityLog.create({
+      data: { userId: session.userId, userName: session.name, action: "delete", memberName: member?.name ?? id },
+    }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }
