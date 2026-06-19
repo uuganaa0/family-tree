@@ -24,6 +24,7 @@ model FamilyMember {
   deathYear Int?
   gender    String?
   note      String?
+  photo     String? // gishuunii zurag — base64 data URL (DB-d hadgalna)
   parentId  String?
   spouseId  String?
   relation     String? // эцэг эхтэй холбоо: null=төрсөн, "adopted"=өргөмөл, "step"=дагавар

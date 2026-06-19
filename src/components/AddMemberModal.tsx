@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { compressImageToDataUrl } from "@/lib/image";
 
 type ModalMode =
   | { type: "root" }
@@ -24,6 +25,21 @@ const MODE_META: Record<ModalMode["type"], { icon: string; title: string }> = {
   root: { icon: "🌳", title: "Үндэс гишүүн нэмэх" },
 };
 
+// ── Дотоод загвар (inline — энэ төсөлд Tailwind utility ажиллахгүй) ──
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--ink-soft)",
+  marginBottom: 7,
+};
+
+const fieldStyle: React.CSSProperties = {
+  width: "100%",
+  fontSize: 15,
+  padding: "11px 14px",
+};
+
 export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     name: "",
@@ -31,10 +47,42 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
     deathYear: "",
     gender: "",
     note: "",
+    photo: "",
     relation: "", // "" = төрсөн, "adopted" = өргөмөл, "step" = дагавар
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // ижил файлыг дахин сонгох боломжтой байх
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Зураг файл сонгоно уу");
+      return;
+    }
+    setError("");
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setForm((f) => ({ ...f, photo: dataUrl }));
+    } catch {
+      setError("Зураг боловсруулахад алдаа гарлаа");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  // Modal нээлттэй үед background scroll-ийг түгжих
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   const meta = MODE_META[mode.type];
 
@@ -79,56 +127,120 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
     onClose();
   }
 
+  // Сонгох товчны загвар (хүйс / холбоос)
+  function chip(active: boolean): React.CSSProperties {
+    return {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      padding: "11px 8px",
+      fontSize: 13.5,
+      fontWeight: 600,
+      borderRadius: 10,
+      border: `1.5px solid ${active ? "var(--brand)" : "var(--line)"}`,
+      background: active ? "color-mix(in srgb, var(--brand) 10%, white)" : "#fff",
+      color: active ? "var(--brand-dark)" : "var(--ink-soft)",
+      cursor: "pointer",
+      transition: "border-color 0.15s ease, background 0.15s ease, color 0.15s ease",
+    };
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(3px)" }}
-      onClick={onClose}
-    >
+    <div className="ft-modal-overlay" onClick={onClose}>
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white"
-        style={{ boxShadow: "var(--shadow-lg)", animation: "ft-pop-in 0.2s ease-out" }}
+        className="ft-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={meta.title}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header — teal brand band */}
+        {/* Header — teal brand band + чимэглэлийн гэрэлтүүлэг */}
         <div
-          className="relative flex items-center gap-4 px-8 py-6"
           style={{
-            background: "linear-gradient(150deg, var(--brand-light), var(--brand-dark))",
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            overflow: "hidden",
+            padding: "22px 26px",
+            background:
+              "linear-gradient(145deg, var(--brand-light) 0%, var(--brand) 55%, var(--brand-dark) 100%)",
             color: "#fff",
           }}
         >
+          {/* decorative glow */}
           <div
-            className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-2xl text-3xl"
-            style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.2)" }}
+            style={{
+              position: "absolute",
+              top: "-70%",
+              right: "-6%",
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(255,255,255,0.22), transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              display: "grid",
+              placeItems: "center",
+              width: 54,
+              height: 54,
+              flexShrink: 0,
+              borderRadius: 16,
+              fontSize: 30,
+              background: "rgba(255,255,255,0.18)",
+              border: "1px solid rgba(255,255,255,0.28)",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+            }}
           >
             {meta.icon}
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-extrabold tracking-tight">{meta.title}</h2>
-            <p className="mt-1 truncate text-[13.5px]" style={{ color: "rgba(255,255,255,0.82)" }}>
+          <div style={{ position: "relative", minWidth: 0, flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>
+              {meta.title}
+            </h2>
+            <p
+              style={{
+                margin: "4px 0 0",
+                fontSize: 13.5,
+                color: "rgba(255,255,255,0.85)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {subtitle}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Хаах"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg text-xl leading-none transition"
-            style={{ color: "rgba(255,255,255,0.85)", background: "rgba(255,255,255,0.12)" }}
-          >
+          <button type="button" onClick={onClose} aria-label="Хаах" className="ft-modal-close">
             ✕
           </button>
         </div>
 
-        <form onSubmit={submit} className="space-y-4 px-8 py-7">
+        <form onSubmit={submit} style={{ padding: "24px 26px" }}>
           {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
+            <div
+              style={{
+                marginBottom: 16,
+                borderRadius: 10,
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                padding: "10px 13px",
+                fontSize: 13.5,
+                color: "#dc2626",
+              }}
+            >
+              {error}
+            </div>
           )}
 
           {/* Нэр */}
-          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
-            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>
               Нэр <span style={{ color: "var(--danger)" }}>*</span>
             </label>
             <input
@@ -137,18 +249,16 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
               autoFocus
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="ft-input w-full"
-              style={{ fontSize: 15, padding: "10px 13px" }}
+              className="ft-input"
+              style={fieldStyle}
               placeholder="Бат-Эрдэнэ"
             />
           </div>
 
-          {/* Хүйс — teal сонгох товчнууд */}
-          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
-            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
-              Хүйс
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
+          {/* Хүйс */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Хүйс</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
                 { val: "male", label: "Эрэгтэй", icon: "♂" },
                 { val: "female", label: "Эмэгтэй", icon: "♀" },
@@ -159,14 +269,9 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
                     key={g.val}
                     type="button"
                     onClick={() => setForm({ ...form, gender: active ? "" : g.val })}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border py-2.5 text-sm font-semibold transition"
-                    style={{
-                      borderColor: active ? "var(--brand)" : "var(--line)",
-                      background: active ? "color-mix(in srgb, var(--brand) 9%, white)" : "#fff",
-                      color: active ? "var(--brand-dark)" : "var(--ink-soft)",
-                    }}
+                    style={chip(active)}
                   >
-                    <span className="text-base leading-none">{g.icon}</span>
+                    <span style={{ fontSize: 16, lineHeight: 1 }}>{g.icon}</span>
                     {g.label}
                   </button>
                 );
@@ -176,11 +281,9 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
 
           {/* Холбоосын төрөл — зөвхөн хүүхэд нэмэх үед */}
           {mode.type === "child" && (
-            <div className="grid grid-cols-[96px_1fr] items-center gap-3">
-              <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
-                Холбоос
-              </label>
-              <div className="grid grid-cols-3 gap-2.5">
+            <div style={{ marginBottom: 18 }}>
+              <label style={labelStyle}>Холбоос</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {[
                   { val: "", label: "Төрсөн", icon: "🧬" },
                   { val: "adopted", label: "Өргөмөл", icon: "🤝" },
@@ -192,14 +295,9 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
                       key={r.val || "bio"}
                       type="button"
                       onClick={() => setForm({ ...form, relation: r.val })}
-                      className="flex items-center justify-center gap-1 rounded-lg border py-2.5 text-[13px] font-semibold transition"
-                      style={{
-                        borderColor: active ? "var(--brand)" : "var(--line)",
-                        background: active ? "color-mix(in srgb, var(--brand) 9%, white)" : "#fff",
-                        color: active ? "var(--brand-dark)" : "var(--ink-soft)",
-                      }}
+                      style={chip(active)}
                     >
-                      <span className="text-sm leading-none">{r.icon}</span>
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>{r.icon}</span>
                       {r.label}
                     </button>
                   );
@@ -209,17 +307,15 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
           )}
 
           {/* Төрсөн / Нас барсан он */}
-          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
-            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
-              Он
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Он</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <input
                 type="number"
                 value={form.birthYear}
                 onChange={(e) => setForm({ ...form, birthYear: e.target.value })}
-                className="ft-input w-full"
-                style={{ fontSize: 15, padding: "10px 13px" }}
+                className="ft-input"
+                style={fieldStyle}
                 placeholder="Төрсөн"
                 min="1800"
                 max={CURRENT_YEAR}
@@ -228,8 +324,8 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
                 type="number"
                 value={form.deathYear}
                 onChange={(e) => setForm({ ...form, deathYear: e.target.value })}
-                className="ft-input w-full"
-                style={{ fontSize: 15, padding: "10px 13px" }}
+                className="ft-input"
+                style={fieldStyle}
                 placeholder="Нас барсан"
                 min="1800"
                 max={CURRENT_YEAR}
@@ -237,30 +333,111 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          {/* Тэмдэглэл */}
-          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
-            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
-              Тэмдэглэл
-            </label>
+          {/* Зураг */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Зураг</label>
             <input
-              type="text"
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={onPickPhoto}
+              style={{ display: "none" }}
+            />
+            {form.photo ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.photo}
+                  alt="Зураг"
+                  style={{
+                    width: 76,
+                    height: 76,
+                    borderRadius: 14,
+                    objectFit: "cover",
+                    border: "1px solid var(--line)",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="ft-btn ft-btn--ghost"
+                    style={{ padding: "8px 12px" }}
+                  >
+                    Солих
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, photo: "" })}
+                    className="ft-btn ft-btn--ghost"
+                    style={{ padding: "8px 12px", color: "var(--danger)" }}
+                  >
+                    Устгах
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={photoBusy}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  padding: "18px",
+                  borderRadius: 12,
+                  border: "1.5px dashed var(--line)",
+                  background: "var(--canvas)",
+                  color: "var(--ink-soft)",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  cursor: photoBusy ? "wait" : "pointer",
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🖼️</span>
+                {photoBusy ? "Боловсруулж байна..." : "Зураг сонгох / оруулах"}
+              </button>
+            )}
+          </div>
+
+          {/* Тэмдэглэл — чат шиг том box */}
+          <div style={{ marginBottom: 4 }}>
+            <label style={labelStyle}>Тэмдэглэл</label>
+            <textarea
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
-              className="ft-input w-full"
-              style={{ fontSize: 15, padding: "10px 13px" }}
-              placeholder="Нэмэлт мэдээлэл..."
+              className="ft-input"
+              style={{ ...fieldStyle, minHeight: 96, resize: "vertical", lineHeight: 1.5 }}
+              rows={4}
+              placeholder="Нэмэлт мэдээлэл, намтар, дурсамж бичих..."
             />
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="ft-btn ft-btn--ghost flex-1 justify-center py-3">
+          <div
+            style={{
+              marginTop: 22,
+              display: "flex",
+              gap: 12,
+              borderTop: "1px solid var(--line)",
+              paddingTop: 20,
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="ft-btn ft-btn--ghost"
+              style={{ flex: 1, justifyContent: "center", padding: "12px", fontSize: 14 }}
+            >
               Болих
             </button>
             <button
               type="submit"
               disabled={loading || !form.name.trim()}
-              className="ft-btn ft-btn--primary flex-1 justify-center py-3"
-              style={{ fontSize: 14 }}
+              className="ft-btn ft-btn--primary"
+              style={{ flex: 1, justifyContent: "center", padding: "12px", fontSize: 14 }}
             >
               {loading ? "Хадгалж байна..." : "Нэмэх"}
             </button>

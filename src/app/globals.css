@@ -169,3 +169,49 @@ button:focus-visible {
   from { opacity: 0; transform: scale(0.96) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes ft-modal-in {
+  from { opacity: 0; transform: scale(0.94) translateY(14px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Modal ── */
+.ft-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px) saturate(1.1);
+  animation: ft-fade-in 0.18s ease-out;
+  overflow-y: auto;
+}
+.ft-modal-card {
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32), 0 4px 14px rgba(15, 23, 42, 0.14);
+  animation: ft-modal-in 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ft-modal-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.ft-modal-close:hover { background: rgba(255, 255, 255, 0.28); transform: rotate(90deg); }
+.ft-modal-close:active { transform: rotate(90deg) scale(0.92); }

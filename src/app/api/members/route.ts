@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
-  const { name, birthYear, deathYear, gender, note, parentId, spouseForId, childForId, relation } = await req.json();
+  const { name, birthYear, deathYear, gender, note, photo, parentId, spouseForId, childForId, relation } = await req.json();
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,
       note: note || null,
+      photo: photo || null,
       parentId: parentId || null,
       spouseId: spouseForId || null,
       // relation зөвхөн хүүхэд нэмэх үед (parentId байх) утгатай

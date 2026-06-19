@@ -11,6 +11,7 @@ export interface Member {
   deathYear?: number | null;
   gender?: string | null;
   note?: string | null;
+  photo?: string | null;
   parentId?: string | null;
   spouseId?: string | null;
   relation?: string | null; // "adopted" | "step" | null(төрсөн)
