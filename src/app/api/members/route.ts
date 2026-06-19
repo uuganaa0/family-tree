@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/jwt";
+import { storePhoto } from "@/lib/blob";
 
 export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 401 });
+  }
   const members = await prisma.familyMember.findMany({
     orderBy: { createdAt: "asc" },
   });
@@ -35,6 +40,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let photoUrl: string | null;
+  try {
+    photoUrl = await storePhoto(photo);
+  } catch (e) {
+    console.error("Blob upload failed:", e);
+    return NextResponse.json(
+      { error: "Зураг хадгалж чадсангүй (Blob тохиргоог шалгана уу)" },
+      { status: 500 }
+    );
+  }
+
   const member = await prisma.familyMember.create({
     data: {
       name: name.trim(),
@@ -42,7 +58,7 @@ export async function POST(req: NextRequest) {
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,
       note: note || null,
-      photo: photo || null,
+      photo: photoUrl,
       parentId: parentId || null,
       spouseId: spouseForId || null,
       // relation зөвхөн хүүхэд нэмэх үед (parentId байх) утгатай

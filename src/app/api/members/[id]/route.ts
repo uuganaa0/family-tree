@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/jwt";
+import { storePhoto, deletePhoto } from "@/lib/blob";
 
 export async function PUT(
   req: NextRequest,
@@ -16,6 +17,22 @@ export async function PUT(
 
   const existing = await prisma.familyMember.findUnique({ where: { id } });
 
+  let photoUrl: string | null;
+  try {
+    photoUrl = await storePhoto(photo);
+  } catch (e) {
+    console.error("Blob upload failed:", e);
+    return NextResponse.json(
+      { error: "Зураг хадгалж чадсангүй (Blob тохиргоог шалгана уу)" },
+      { status: 500 }
+    );
+  }
+
+  // Зураг солигдсон/устсан бол хуучин Blob файлыг цэвэрлэнэ
+  if (existing?.photo && existing.photo !== photoUrl) {
+    await deletePhoto(existing.photo);
+  }
+
   const updated = await prisma.familyMember.update({
     where: { id },
     data: {
@@ -24,7 +41,7 @@ export async function PUT(
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,
       note: note || null,
-      photo: photo || null,
+      photo: photoUrl,
       // relation зөвхөн эцэг эхтэй (parentId байх) бол утгатай
       relation: existing?.parentId && (relation === "adopted" || relation === "step") ? relation : null,
       spouseStatus: existing?.spouseId && spouseStatus === "divorced" ? "divorced" : null,
@@ -79,6 +96,9 @@ export async function DELETE(
   });
 
   await prisma.familyMember.delete({ where: { id } });
+
+  // Гишүүний зургийг Blob store-оос цэвэрлэнэ
+  await deletePhoto(member?.photo);
 
   await prisma.activityLog.create({
     data: { userId: session.userId, userName: session.name, action: "delete", memberName: member?.name ?? id },

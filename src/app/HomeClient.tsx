@@ -99,7 +99,9 @@ export default function HomeClient({ initialMembers, user }: Props) {
 
   async function refreshMembers() {
     const res = await fetch("/api/members", { cache: "no-store" });
-    setMembers(await res.json());
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data)) setMembers(data);
   }
 
   const handleAddChild = useCallback((parentId: string, parentName: string) => {

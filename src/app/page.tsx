@@ -3,10 +3,12 @@ import { prisma } from "@/lib/db";
 import HomeClient from "./HomeClient";
 
 export default async function Home() {
-  const [session, members] = await Promise.all([
-    getSession(),
-    prisma.familyMember.findMany({ orderBy: { createdAt: "asc" } }),
-  ]);
+  const session = await getSession();
+
+  // Нэвтрээгүй бол гэр бүлийн мэдээллийг серверт ч татахгүй (нууцлал)
+  const members = session
+    ? await prisma.familyMember.findMany({ orderBy: { createdAt: "asc" } })
+    : [];
 
   return (
     <HomeClient

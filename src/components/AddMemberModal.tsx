@@ -115,11 +115,11 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error);
+      setError(data.error ?? "Хадгалахад алдаа гарлаа");
       return;
     }
 

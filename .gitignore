@@ -9,3 +9,4 @@ prisma/prisma/
 *.db-journal
 .vercel
 *.tsbuildinfo
+.env*

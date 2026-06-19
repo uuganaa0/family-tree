@@ -83,10 +83,10 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
       body: JSON.stringify(form),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
 
-    if (!res.ok) { setError(data.error); return; }
+    if (!res.ok) { setError(data.error ?? "Хадгалахад алдаа гарлаа"); return; }
     onSaved();
     onClose();
   }
