@@ -10,9 +10,11 @@ export async function PUT(
   if (!session || session.role !== "admin") return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
 
   const { id } = await params;
-  const { name, birthYear, deathYear, gender, note } = await req.json();
+  const { name, birthYear, deathYear, gender, note, relation, spouseStatus } = await req.json();
 
   if (!name?.trim()) return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
+
+  const existing = await prisma.familyMember.findUnique({ where: { id } });
 
   const updated = await prisma.familyMember.update({
     where: { id },
@@ -22,8 +24,19 @@ export async function PUT(
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,
       note: note || null,
+      // relation зөвхөн эцэг эхтэй (parentId байх) бол утгатай
+      relation: existing?.parentId && (relation === "adopted" || relation === "step") ? relation : null,
+      spouseStatus: existing?.spouseId && spouseStatus === "divorced" ? "divorced" : null,
     },
   });
+
+  // Гэр бүлийн байдлыг хосын нөгөө талд нь sync хийнэ
+  if (existing?.spouseId) {
+    await prisma.familyMember.update({
+      where: { id: existing.spouseId },
+      data: { spouseStatus: spouseStatus === "divorced" ? "divorced" : null },
+    });
+  }
 
   await prisma.activityLog.create({
     data: { userId: session.userId, userName: session.name, action: "update", memberName: updated.name },

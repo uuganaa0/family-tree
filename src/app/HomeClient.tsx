@@ -222,6 +222,8 @@ export default function HomeClient({ initialMembers, user }: Props) {
           <span><span style={{ color: "#ec4899" }}>❤</span> Эхнэр/Нөхөр</span>
           <span><span style={{ color: "#f59e0b" }}>✏</span> Засах</span>
           <span><span style={{ color: "#ef4444", fontWeight: 700 }}>×</span> Устгах</span>
+          <span style={{ color: "#7c3aed" }}>┄ Өргөмөл/Дагавар</span>
+          <span>💔 Салсан</span>
           <span style={{ marginLeft: "auto" }}>Box-г чирж байршуулна</span>
         </div>
       )}

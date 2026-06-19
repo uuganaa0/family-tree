@@ -13,6 +13,8 @@ export interface Member {
   note?: string | null;
   parentId?: string | null;
   spouseId?: string | null;
+  relation?: string | null; // "adopted" | "step" | null(төрсөн)
+  spouseStatus?: string | null; // "divorced" | null(гэрлэсэн)
 }
 
 interface TreeNode extends Member {
@@ -234,9 +236,16 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .join("path")
       .attr("class", "link")
       .attr("fill", "none")
-      .attr("stroke", "#b8c5d6")
+      .attr("stroke", (d) => {
+        const rel = memberMap.current.get(d.tid)?.relation;
+        return rel === "adopted" || rel === "step" ? "#c4b5fd" : "#b8c5d6";
+      })
       .attr("stroke-width", 2)
       .attr("stroke-linecap", "round")
+      .attr("stroke-dasharray", (d) => {
+        const rel = memberMap.current.get(d.tid)?.relation;
+        return rel === "adopted" || rel === "step" ? "6,5" : null;
+      })
       .attr("d", (d) => linkD(d.sid, d.tid));
 
     // ── Node groups ──
@@ -278,6 +287,24 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
       .attr("font-size", "11px").attr("fill", "#94a3b8").attr("text-anchor", "middle")
       .text("✝");
 
+    // Өргөмөл / Дагавар шошго — картын дээр талд
+    const relMeta: Record<string, { label: string; fill: string; ink: string }> = {
+      adopted: { label: "Өргөмөл", fill: "#ede9fe", ink: "#6d28d9" },
+      step: { label: "Дагавар", fill: "#fef3c7", ink: "#b45309" },
+    };
+    const relBadge = node.filter((d) => d.data.relation === "adopted" || d.data.relation === "step")
+      .append("g")
+      .attr("transform", `translate(0,${-NH / 2 - 11})`)
+      .attr("pointer-events", "none");
+    relBadge.append("rect")
+      .attr("x", -32).attr("y", -9).attr("width", 64).attr("height", 18).attr("rx", 9)
+      .attr("fill", (d) => relMeta[d.data.relation!].fill)
+      .attr("stroke", (d) => relMeta[d.data.relation!].ink).attr("stroke-width", 0.75).attr("stroke-opacity", 0.4);
+    relBadge.append("text").attr("text-anchor", "middle").attr("dy", "0.34em")
+      .attr("font-size", "10px").attr("font-weight", "700")
+      .attr("fill", (d) => relMeta[d.data.relation!].ink)
+      .text((d) => relMeta[d.data.relation!].label);
+
     // Аавын нэр (овог) — parentId байвал л харагдана
     node.append("text").attr("text-anchor", "middle").attr("y", -NH / 2 + 18)
       .attr("font-size", "10px").attr("fill", "#94a3b8").attr("font-style", "italic")
@@ -307,12 +334,16 @@ export default function FamilyTree({ members, isAuthenticated, onAddChild, onAdd
 
     const coupleNodes = node.filter((d) => hasSpouseCard(d.data.id));
 
+    const isDivorced = (d: TreeNode) => d.spouseStatus === "divorced";
+
     coupleNodes.append("line")
       .attr("x1", NW / 2).attr("y1", 0).attr("x2", sOffset - NW / 2).attr("y2", 0)
-      .attr("stroke", "#f9a8d4").attr("stroke-width", 2).attr("stroke-dasharray", "4,3");
+      .attr("stroke", (d) => isDivorced(d.data) ? "#cbd5e1" : "#f9a8d4")
+      .attr("stroke-width", 2).attr("stroke-dasharray", "4,3");
 
     coupleNodes.append("text").attr("x", sOffset / 2).attr("y", 5)
-      .attr("text-anchor", "middle").attr("font-size", "11px").text("❤");
+      .attr("text-anchor", "middle").attr("font-size", "11px")
+      .text((d) => isDivorced(d.data) ? "💔" : "❤");
 
     const sg = coupleNodes.append("g").attr("transform", `translate(${sOffset},0)`);
 

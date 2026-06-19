@@ -26,6 +26,8 @@ model FamilyMember {
   note      String?
   parentId  String?
   spouseId  String?
+  relation     String? // эцэг эхтэй холбоо: null=төрсөн, "adopted"=өргөмөл, "step"=дагавар
+  spouseStatus String? // гэр бүлийн байдал: null=гэрлэсэн, "divorced"=салсан
   parent    FamilyMember?  @relation("ParentChild", fields: [parentId], references: [id])
   children  FamilyMember[] @relation("ParentChild")
   createdAt DateTime       @default(now())

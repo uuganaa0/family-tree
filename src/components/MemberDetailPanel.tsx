@@ -51,7 +51,10 @@ export default function MemberDetailPanel({ member, fatherName, spouseName, isAd
         {member.birthYear && <Row label="Төрсөн он" value={String(member.birthYear)} />}
         {member.deathYear && <Row label="Нас барсан он" value={String(member.deathYear)} />}
         {age !== null && <Row label={isDead ? "Насалсан" : "Нас"} value={`${age} нас`} />}
+        {member.relation === "adopted" && <Row label="Холбоос" value="Өргөмөл хүүхэд" />}
+        {member.relation === "step" && <Row label="Холбоос" value="Дагавар хүүхэд" />}
         {spouseName && <Row label="Эхнэр / Нөхөр" value={spouseName} />}
+        {spouseName && member.spouseStatus === "divorced" && <Row label="Гэр бүл" value="Салсан 💔" />}
         {member.note && <Row label="Тэмдэглэл" value={member.note} />}
       </div>
       {isAdmin && (

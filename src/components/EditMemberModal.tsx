@@ -18,6 +18,8 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
     deathYear: member.deathYear?.toString() ?? "",
     gender: member.gender ?? "",
     note: member.note ?? "",
+    relation: member.relation ?? "",
+    spouseStatus: member.spouseStatus ?? "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,64 +43,220 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
     onClose();
   }
 
-  const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-800">Мэдээлэл засах</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{member.name}</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(3px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white"
+        style={{ boxShadow: "var(--shadow-lg)", animation: "ft-pop-in 0.2s ease-out" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — teal brand band */}
+        <div
+          className="relative flex items-center gap-4 px-8 py-6"
+          style={{
+            background: "linear-gradient(150deg, var(--brand-light), var(--brand-dark))",
+            color: "#fff",
+          }}
+        >
+          <div
+            className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-2xl text-3xl"
+            style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.2)" }}
+          >
+            ✏️
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-extrabold tracking-tight">Мэдээлэл засах</h2>
+            <p className="mt-1 truncate text-[13.5px]" style={{ color: "rgba(255,255,255,0.82)" }}>
+              {member.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Хаах"
+            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg text-xl leading-none transition"
+            style={{ color: "rgba(255,255,255,0.85)", background: "rgba(255,255,255,0.12)" }}
+          >
+            ✕
+          </button>
         </div>
 
-        {error && <div className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+        <form onSubmit={submit} className="space-y-4 px-8 py-7">
+          {error && (
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
+          )}
 
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Нэр *</label>
-            <input type="text" required value={form.name}
+          {/* Нэр */}
+          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+              Нэр <span style={{ color: "var(--danger)" }}>*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className={inputCls} />
+              className="ft-input w-full"
+              style={{ fontSize: 15, padding: "10px 13px" }}
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн он</label>
-              <input type="number" value={form.birthYear}
+          {/* Хүйс */}
+          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+              Хүйс
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { val: "male", label: "Эрэгтэй", icon: "♂" },
+                { val: "female", label: "Эмэгтэй", icon: "♀" },
+              ].map((g) => {
+                const active = form.gender === g.val;
+                return (
+                  <button
+                    key={g.val}
+                    type="button"
+                    onClick={() => setForm({ ...form, gender: active ? "" : g.val })}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border py-2.5 text-sm font-semibold transition"
+                    style={{
+                      borderColor: active ? "var(--brand)" : "var(--line)",
+                      background: active ? "color-mix(in srgb, var(--brand) 9%, white)" : "#fff",
+                      color: active ? "var(--brand-dark)" : "var(--ink-soft)",
+                    }}
+                  >
+                    <span className="text-base leading-none">{g.icon}</span>
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Холбоосын төрөл — зөвхөн эцэг эхтэй бол */}
+          {member.parentId && (
+            <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+              <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+                Холбоос
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { val: "", label: "Төрсөн", icon: "🧬" },
+                  { val: "adopted", label: "Өргөмөл", icon: "🤝" },
+                  { val: "step", label: "Дагавар", icon: "👣" },
+                ].map((r) => {
+                  const active = form.relation === r.val;
+                  return (
+                    <button
+                      key={r.val || "bio"}
+                      type="button"
+                      onClick={() => setForm({ ...form, relation: r.val })}
+                      className="flex items-center justify-center gap-1 rounded-lg border py-2.5 text-[13px] font-semibold transition"
+                      style={{
+                        borderColor: active ? "var(--brand)" : "var(--line)",
+                        background: active ? "color-mix(in srgb, var(--brand) 9%, white)" : "#fff",
+                        color: active ? "var(--brand-dark)" : "var(--ink-soft)",
+                      }}
+                    >
+                      <span className="text-sm leading-none">{r.icon}</span>
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Гэр бүлийн байдал — зөвхөн хантай бол */}
+          {member.spouseId && (
+            <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+              <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+                Гэр бүл
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { val: "", label: "Гэрлэсэн", icon: "❤" },
+                  { val: "divorced", label: "Салсан", icon: "💔" },
+                ].map((s) => {
+                  const active = form.spouseStatus === s.val;
+                  return (
+                    <button
+                      key={s.val || "married"}
+                      type="button"
+                      onClick={() => setForm({ ...form, spouseStatus: s.val })}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border py-2.5 text-sm font-semibold transition"
+                      style={{
+                        borderColor: active ? "var(--brand)" : "var(--line)",
+                        background: active ? "color-mix(in srgb, var(--brand) 9%, white)" : "#fff",
+                        color: active ? "var(--brand-dark)" : "var(--ink-soft)",
+                      }}
+                    >
+                      <span className="text-base leading-none">{s.icon}</span>
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Төрсөн / Нас барсан он */}
+          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+              Он
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              <input
+                type="number"
+                value={form.birthYear}
                 onChange={(e) => setForm({ ...form, birthYear: e.target.value })}
-                className={inputCls} placeholder="1980" min="1800" max={CURRENT_YEAR} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Нас барсан он</label>
-              <input type="number" value={form.deathYear}
+                className="ft-input w-full"
+                style={{ fontSize: 15, padding: "10px 13px" }}
+                placeholder="Төрсөн"
+                min="1800"
+                max={CURRENT_YEAR}
+              />
+              <input
+                type="number"
+                value={form.deathYear}
                 onChange={(e) => setForm({ ...form, deathYear: e.target.value })}
-                className={inputCls} placeholder="2020" min="1800" max="2025" />
+                className="ft-input w-full"
+                style={{ fontSize: 15, padding: "10px 13px" }}
+                placeholder="Нас барсан"
+                min="1800"
+                max={CURRENT_YEAR}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Хүйс</label>
-            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className={inputCls}>
-              <option value="">Сонгох</option>
-              <option value="male">Эрэгтэй</option>
-              <option value="female">Эмэгтэй</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Тэмдэглэл</label>
-            <input type="text" value={form.note}
+          {/* Тэмдэглэл */}
+          <div className="grid grid-cols-[96px_1fr] items-center gap-3">
+            <label className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
+              Тэмдэглэл
+            </label>
+            <input
+              type="text"
+              value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
-              className={inputCls} placeholder="Нэмэлт мэдээлэл..." />
+              className="ft-input w-full"
+              style={{ fontSize: 15, padding: "10px 13px" }}
+              placeholder="Нэмэлт мэдээлэл..."
+            />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 border border-gray-300 text-gray-700 rounded-lg py-2 text-sm hover:bg-gray-50 transition">
+            <button type="button" onClick={onClose} className="ft-btn ft-btn--ghost flex-1 justify-center py-3">
               Болих
             </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium transition disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={loading || !form.name.trim()}
+              className="ft-btn ft-btn--primary flex-1 justify-center py-3"
+              style={{ fontSize: 14 }}
+            >
               {loading ? "Хадгалж байна..." : "Хадгалах"}
             </button>
           </div>
