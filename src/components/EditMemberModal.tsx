@@ -30,6 +30,7 @@ const fieldStyle: React.CSSProperties = {
 export default function EditMemberModal({ member, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     name: member.name,
+    nickname: member.nickname ?? "",
     birthYear: member.birthYear?.toString() ?? "",
     deathYear: member.deathYear?.toString() ?? "",
     gender: member.gender ?? "",
@@ -213,6 +214,19 @@ export default function EditMemberModal({ member, onClose, onSaved }: Props) {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="ft-input"
               style={fieldStyle}
+            />
+          </div>
+
+          {/* Хоч нэр */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Хоч нэр</label>
+            <input
+              type="text"
+              value={form.nickname}
+              onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+              className="ft-input"
+              style={fieldStyle}
+              placeholder="Батаа"
             />
           </div>
 

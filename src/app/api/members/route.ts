@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
   }
 
-  const { name, birthYear, deathYear, gender, note, photo, parentId, parent2Id, spouseForId, childForId, relation } = await req.json();
+  const { name, nickname, birthYear, deathYear, gender, note, photo, parentId, parent2Id, spouseForId, childForId, relation } = await req.json();
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
   const member = await prisma.familyMember.create({
     data: {
       name: name.trim(),
+      nickname: nickname?.trim() || null,
       birthYear: birthYear ? Number(birthYear) : null,
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,

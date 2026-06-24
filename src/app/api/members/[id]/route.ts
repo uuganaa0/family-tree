@@ -11,7 +11,7 @@ export async function PUT(
   if (!session || !["admin", "sub-admin"].includes(session.role)) return NextResponse.json({ error: "Зөвшөөрөлгүй" }, { status: 403 });
 
   const { id } = await params;
-  const { name, birthYear, deathYear, gender, note, photo, relation } = await req.json();
+  const { name, nickname, birthYear, deathYear, gender, note, photo, relation } = await req.json();
 
   if (!name?.trim()) return NextResponse.json({ error: "Нэр оруулна уу" }, { status: 400 });
 
@@ -37,6 +37,7 @@ export async function PUT(
     where: { id },
     data: {
       name: name.trim(),
+      nickname: nickname?.trim() || null,
       birthYear: birthYear ? Number(birthYear) : null,
       deathYear: deathYear ? Number(deathYear) : null,
       gender: gender || null,

@@ -7,6 +7,7 @@ import { getFatherName } from "@/lib/family";
 export interface Member {
   id: string;
   name: string;
+  nickname?: string | null; // хоч нэр
   birthYear?: number | null;
   deathYear?: number | null;
   gender?: string | null;
@@ -405,18 +406,26 @@ export default function FamilyTree({ members, marriages, isAuthenticated, canDel
         return father.length > 16 ? father.slice(0, 16) + "…" : father;
       });
 
+    // Хоч нэр байгаа эсэх
+    const hasNick = (d: d3.HierarchyPointNode<TreeNode>) => !!d.data.nickname?.trim();
+
     // Өөрийн нэр
-    node.append("text").attr("text-anchor", "middle").attr("y", 2)
+    node.append("text").attr("text-anchor", "middle").attr("y", (d) => hasNick(d) ? -3 : 2)
       .attr("font-size", "13px").attr("font-weight", "700")
       .attr("fill", (d) => d.data.deathYear ? "#94a3b8" : "#1e293b")
       .text((d) => { const n = d.data.name; return n.length > 14 ? n.slice(0, 14) + "…" : n; });
 
+    // Хоч нэр — нэрийн доор жижигээр
+    node.filter((d) => hasNick(d)).append("text").attr("text-anchor", "middle").attr("y", 9)
+      .attr("font-size", "9px").attr("fill", "#94a3b8").attr("font-style", "italic")
+      .text((d) => { const n = d.data.nickname!.trim(); return `"${n.length > 16 ? n.slice(0, 16) + "…" : n}"`; });
+
     // Он
-    node.append("text").attr("text-anchor", "middle").attr("y", 17)
+    node.append("text").attr("text-anchor", "middle").attr("y", (d) => hasNick(d) ? 21 : 17)
       .attr("font-size", "10px").attr("fill", "#64748b")
       .text((d) => yearText(d.data));
 
-    node.append("text").attr("text-anchor", "middle").attr("y", 30)
+    node.append("text").attr("text-anchor", "middle").attr("y", (d) => hasNick(d) ? 32 : 30)
       .attr("font-size", "10px").attr("fill", "#94a3b8")
       .text((d) => { const n = d.data.note ?? ""; return n.length > 18 ? n.slice(0, 18) + "…" : n; });
 
@@ -479,12 +488,20 @@ export default function FamilyTree({ members, marriages, isAuthenticated, canDel
             .text(sFather.length > 16 ? sFather.slice(0, 16) + "…" : sFather);
         }
 
-        cardG.append("text").attr("text-anchor", "middle").attr("y", 2)
+        const smNick = sm.nickname?.trim();
+
+        cardG.append("text").attr("text-anchor", "middle").attr("y", smNick ? -3 : 2)
           .attr("font-size", "13px").attr("font-weight", "700")
           .attr("fill", sm.deathYear ? "#94a3b8" : "#1e293b")
           .text(sm.name.length > 14 ? sm.name.slice(0, 14) + "…" : sm.name);
 
-        cardG.append("text").attr("text-anchor", "middle").attr("y", 17)
+        if (smNick) {
+          cardG.append("text").attr("text-anchor", "middle").attr("y", 9)
+            .attr("font-size", "9px").attr("fill", "#94a3b8").attr("font-style", "italic")
+            .text(`"${smNick.length > 16 ? smNick.slice(0, 16) + "…" : smNick}"`);
+        }
+
+        cardG.append("text").attr("text-anchor", "middle").attr("y", smNick ? 21 : 17)
           .attr("font-size", "10px").attr("fill", "#64748b").text(yearText(sm));
 
         // Картны click → detail

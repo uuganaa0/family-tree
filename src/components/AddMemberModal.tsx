@@ -43,6 +43,7 @@ const fieldStyle: React.CSSProperties = {
 export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     name: "",
+    nickname: "",
     birthYear: "",
     deathYear: "",
     gender: "",
@@ -252,6 +253,19 @@ export default function AddMemberModal({ mode, onClose, onSaved }: Props) {
               className="ft-input"
               style={fieldStyle}
               placeholder="Бат-Эрдэнэ"
+            />
+          </div>
+
+          {/* Хоч нэр */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Хоч нэр</label>
+            <input
+              type="text"
+              value={form.nickname}
+              onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+              className="ft-input"
+              style={fieldStyle}
+              placeholder="Батаа"
             />
           </div>
 

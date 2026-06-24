@@ -20,6 +20,7 @@ model User {
 model FamilyMember {
   id        String         @id @default(cuid())
   name      String
+  nickname  String? // хоч нэр / дуудлагын нэр
   birthYear Int?
   deathYear Int?
   gender    String?

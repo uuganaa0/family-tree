@@ -69,10 +69,12 @@ export default function MemberDetailPanel({ member, fatherName, spouses = [], ca
             <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em" }}>
               {member.name}{isDead && <span style={{ opacity: 0.85, marginLeft: 5 }}>✝</span>}
             </div>
+            {member.nickname && <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.85)" }}>«{member.nickname}»</div>}
           </div>
         </div>
       </div>
       <div style={{ flex: 1, padding: 18, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+        {member.nickname && <Row label="Хоч нэр" value={member.nickname} />}
         <Row label="Хүйс" value={member.gender === "male" ? "Эрэгтэй" : member.gender === "female" ? "Эмэгтэй" : "—"} />
         {member.birthYear && <Row label="Төрсөн он" value={String(member.birthYear)} />}
         {member.deathYear && <Row label="Нас барсан он" value={String(member.deathYear)} />}
